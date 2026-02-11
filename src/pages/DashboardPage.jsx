@@ -1,15 +1,16 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useApp } from '../contexts/AppContext'
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-import { TrendingUp, Database, FileText, ClipboardList } from 'lucide-react'
+import { TrendingUp, Database, FileText, ClipboardList, Layers, LayoutDashboard, PieChart as PieIcon, Activity } from 'lucide-react'
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899']
 
 export default function DashboardPage() {
   const { fields, formTypes, records, loading } = useApp()
   const [selectedFormType, setSelectedFormType] = useState('all')
+  const [groupByField, setGroupByField] = useState('')
 
-  const stats = {
+  const stats = useMemo(() => ({
     totalFields: fields.length,
     totalFormTypes: formTypes.length,
     totalRecords: records.length,
@@ -17,340 +18,280 @@ export default function DashboardPage() {
       const today = new Date().toDateString()
       return new Date(r.created_at).toDateString() === today
     }).length
-  }
+  }), [fields, formTypes, records])
 
-  const filteredRecords = selectedFormType === 'all'
-    ? records
-    : records.filter(r => r.form_type_id === selectedFormType)
+  const filteredRecords = useMemo(() => 
+    selectedFormType === 'all'
+      ? records
+      : records.filter(r => r.form_type_id.toString() === selectedFormType.toString())
+  , [selectedFormType, records])
 
-  const recordsPerFormType = formTypes.map(form => ({
-    name: form.name,
-    count: records.filter(r => r.form_type_id === form.id).length
-  }))
+  const groupedStats = useMemo(() => {
+    if (selectedFormType === 'all' || filteredRecords.length === 0) return null;
+    const form = formTypes.find(f => f.id.toString() === selectedFormType.toString());
+    if (!form || !form.form_fields) return null;
 
-  const getLast7Days = () => {
-    const days = []
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date()
-      date.setDate(date.getDate() - i)
-      days.push({
-        date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        count: records.filter(r => {
-          const regDate = new Date(r.created_at).toDateString()
-          return regDate === date.toDateString()
-        }).length
-      })
-    }
-    return days
-  }
+    const allFields = form.form_fields.map(ff => ff.fields);
+    const numericFields = allFields.filter(f => f.data_type === 'number');
+    const activeGroupFieldId = groupByField || allFields[0]?.id;
+    
+    if (!activeGroupFieldId) return null;
 
-  const recordsPerDay = getLast7Days()
+    const groups = {};
+    filteredRecords.forEach(reg => {
+      const data = reg.data;
+      let groupValue = data[activeGroupFieldId] || "N/A";
+      if (!groups[groupValue]) {
+        groups[groupValue] = { 
+          name: groupValue, 
+          count: 0, 
+          ...numericFields.reduce((acc, nf) => ({ ...acc, [nf.name]: 0 }), {}) 
+        };
+      }
+      groups[groupValue].count += 1;
+      numericFields.forEach(nf => {
+        const val = parseFloat(data[nf.id]);
+        if (!isNaN(val)) groups[groupValue][nf.name] += val;
+      });
+    });
 
-  const getNumericFieldStats = () => {
+    return { 
+      data: Object.values(groups), 
+      availableFields: allFields, 
+      numericFields, 
+      activeFieldName: allFields.find(f => f.id.toString() === activeGroupFieldId.toString())?.name 
+    };
+  }, [selectedFormType, filteredRecords, formTypes, groupByField]);
+
+  const numericStats = useMemo(() => {
     if (!filteredRecords.length || selectedFormType === 'all') return null
+    const form = formTypes.find(f => f.id.toString() === selectedFormType.toString())
+    if (!form || !form.form_fields) return null
 
-    const form = formTypes.find(f => f.id === selectedFormType)
-    if (!form) return null
-
-    const numericFields = form.form_fields
-      .map(ff => ff.fields)
-      .filter(f => f.data_type === 'number')
-
+    const numericFields = form.form_fields.map(ff => ff.fields).filter(f => f.data_type === 'number')
     if (numericFields.length === 0) return null
 
     return numericFields.map(field => {
-      const values = filteredRecords
-        .map(r => parseFloat(r.data[field.id]))
-        .filter(v => !isNaN(v))
-
+      const values = filteredRecords.map(r => parseFloat(r.data[field.id])).filter(v => !isNaN(v))
       if (values.length === 0) return null
-
       const sum = values.reduce((a, b) => a + b, 0)
-      const avg = sum / values.length
-      const max = Math.max(...values)
-      const min = Math.min(...values)
-
       return {
         name: field.name,
-        average: avg.toFixed(2),
-        maximum: max.toFixed(2),
-        minimum: min.toFixed(2),
+        average: (sum / values.length).toFixed(2),
+        maximum: Math.max(...values).toFixed(2),
+        minimum: Math.min(...values).toFixed(2),
         total: sum.toFixed(2)
       }
     }).filter(Boolean)
-  }
+  }, [selectedFormType, filteredRecords, formTypes])
 
-  const numericStats = getNumericFieldStats()
-
-  const getSelectorFieldStats = () => {
+  const selectorStats = useMemo(() => {
     if (!filteredRecords.length || selectedFormType === 'all') return null
+    const form = formTypes.find(f => f.id.toString() === selectedFormType.toString())
+    if (!form || !form.form_fields) return null
 
-    const form = formTypes.find(f => f.id === selectedFormType)
-    if (!form) return null
-
-    const selectorFields = form.form_fields
-      .map(ff => ff.fields)
-      .filter(f => f.data_type === 'selector')
-
-    if (selectorFields.length === 0) return null
-
-    return selectorFields.map(field => {
-      const valueCounts = {}
-      
+    const selectors = form.form_fields.map(ff => ff.fields).filter(f => f.data_type === 'selector')
+    return selectors.map(field => {
+      const counts = {}
       filteredRecords.forEach(r => {
-        const value = r.data[field.id]
-        if (value) {
-          valueCounts[value] = (valueCounts[value] || 0) + 1
-        }
+        const val = r.data[field.id]
+        if (val) counts[val] = (counts[val] || 0) + 1
       })
-
-      const chartData = Object.entries(valueCounts)
-        .map(([name, value]) => ({ name, value }))
-        .sort((a, b) => b.value - a.value)
-
-      return {
-        name: field.name,
-        data: chartData
-      }
+      const data = Object.entries(counts).map(([name, value]) => ({ name, value }))
+      return { name: field.name, data }
     }).filter(s => s.data.length > 0)
-  }
+  }, [selectedFormType, filteredRecords, formTypes])
 
-  const selectorStats = getSelectorFieldStats()
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-gray-600 dark:text-gray-400">Loading...</div>
-      </div>
-    )
-  }
+  if (loading) return <div className="flex justify-center items-center h-96 text-primary font-bold animate-pulse">Loading Analytics...</div>
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-          Dashboard
+    <div className="space-y-8 pb-12 text-gray-900 dark:text-gray-100 transition-colors duration-300">
+      <div className="flex flex-col gap-1">
+        <h2 className="text-3xl font-black flex items-center gap-3">
+          <LayoutDashboard className="text-primary" size={32} /> Dashboard
         </h2>
-        <p className="text-gray-600 dark:text-gray-400">
-          Statistics and analysis of your data
-        </p>
+        <p className="text-gray-500 dark:text-gray-400">Data analysis & business intelligence</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Fields</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                {stats.totalFields}
-              </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {[
+          { label: 'Total Records', value: stats.totalRecords, icon: ClipboardList, color: 'text-primary' },
+          { label: 'Form Types', value: stats.totalFormTypes, icon: FileText, color: 'text-green-500' },
+          { label: 'Fields', value: stats.totalFields, icon: Database, color: 'text-orange-500' },
+          { label: 'Today', value: stats.recordsToday, icon: TrendingUp, color: 'text-purple-500' }
+        ].map((kpi, i) => (
+          <div key={i} className="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{kpi.label}</p>
+                <p className="text-3xl font-black mt-1">{kpi.value}</p>
+              </div>
+              <kpi.icon size={28} className={kpi.color} />
             </div>
-            <Database className="w-8 h-8 text-blue-500" />
           </div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Forms</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                {stats.totalFormTypes}
-              </p>
-            </div>
-            <FileText className="w-8 h-8 text-green-500" />
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Total Records</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                {stats.totalRecords}
-              </p>
-            </div>
-            <ClipboardList className="w-8 h-8 text-orange-500" />
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Today</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                {stats.recordsToday}
-              </p>
-            </div>
-            <TrendingUp className="w-8 h-8 text-purple-500" />
-          </div>
-        </div>
+        ))}
       </div>
 
-      {records.length > 0 && (
-        <>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Records per Form
-              </h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={recordsPerFormType}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                  <XAxis dataKey="name" stroke="#9ca3af" />
-                  <YAxis stroke="#9ca3af" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#1f2937',
-                      border: '1px solid #374151',
-                      borderRadius: '0.5rem'
-                    }}
-                  />
-                  <Bar dataKey="count" fill="#3b82f6" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Last 7 Days
-              </h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={recordsPerDay}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                  <XAxis dataKey="date" stroke="#9ca3af" />
-                  <YAxis stroke="#9ca3af" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#1f2937',
-                      border: '1px solid #374151',
-                      borderRadius: '0.5rem'
-                    }}
-                  />
-                  <Line type="monotone" dataKey="count" stroke="#10b981" strokeWidth={2} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </>
-      )}
-
-      {formTypes.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-3 mb-6">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Analyze form:
+      <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 p-6 md:p-8 shadow-xl">
+        <div className="flex flex-wrap items-end justify-start gap-8 mb-10 pb-8 border-b border-gray-100 dark:border-gray-700">
+          
+          <div className="flex flex-col gap-3">
+            <label className="text-[11px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2 px-1">
+              <FileText size={14} /> 1. Select Form
             </label>
-            <select
-              value={selectedFormType}
-              onChange={(e) => setSelectedFormType(e.target.value)}
-              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+            <select 
+              value={selectedFormType} 
+              onChange={(e) => { setSelectedFormType(e.target.value); setGroupByField(''); }}
+              className="w-full md:w-64 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded-xl p-3 text-sm font-bold outline-none focus:ring-2 focus:ring-primary appearance-none cursor-pointer"
             >
-              <option value="all">All</option>
-              {formTypes.map(form => (
-                <option key={form.id} value={form.id}>
-                  {form.name}
-                </option>
-              ))}
+              <option value="all">Global Activity</option>
+              {formTypes.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
             </select>
           </div>
 
-          {numericStats && numericStats.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Numeric Statistics
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {numericStats.map(stat => (
-                  <div
-                    key={stat.name}
-                    className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4"
-                  >
-                    <h4 className="font-medium text-gray-900 dark:text-white mb-3">
-                      {stat.name}
-                    </h4>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600 dark:text-gray-400">Average:</span>
-                        <span className="font-semibold text-gray-900 dark:text-white">
-                          {stat.average}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600 dark:text-gray-400">Maximum:</span>
-                        <span className="font-semibold text-gray-900 dark:text-white">
-                          {stat.maximum}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600 dark:text-gray-400">Minimum:</span>
-                        <span className="font-semibold text-gray-900 dark:text-white">
-                          {stat.minimum}
-                        </span>
-                      </div>
-                      <div className="flex justify-between pt-2 border-t border-gray-300 dark:border-gray-600">
-                        <span className="text-gray-600 dark:text-gray-400">Total:</span>
-                        <span className="font-bold text-blue-600 dark:text-blue-400">
-                          {stat.total}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+          {groupedStats && (
+            <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-left-4 duration-500">
+              <label className="text-[11px] font-black uppercase tracking-widest text-primary flex items-center gap-2 px-1">
+                <Layers size={14} /> 2. Group & Compare by
+              </label>
+              <div className="relative">
+                <select 
+                  value={groupByField} 
+                  onChange={(e) => setGroupByField(e.target.value)}
+                  className="w-full md:w-64 bg-primary/10 dark:bg-primary/20 border-2 border-primary/30 text-primary dark:text-blue-300 rounded-xl p-3 pr-10 text-sm font-black outline-none focus:ring-2 focus:ring-primary appearance-none cursor-pointer"
+                >
+                  {groupedStats.availableFields.map(f => (
+                    <option key={f.id} value={f.id} className="text-black bg-white dark:bg-gray-800 font-sans">
+                      {f.name}
+                    </option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-primary">
+                  <Layers size={16} />
+                </div>
               </div>
             </div>
           )}
+        </div>
 
-          {selectorStats && selectorStats.length > 0 && (
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Value Distribution
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {selectorStats.map((stat, index) => (
-                  <div key={stat.name}>
-                    <h4 className="font-medium text-gray-900 dark:text-white mb-3 text-center">
-                      {stat.name}
-                    </h4>
-                    <ResponsiveContainer width="100%" height={250}>
+        {numericStats && (
+          <div className="mb-12 animate-in fade-in duration-500">
+            <h3 className="text-sm font-black text-gray-400 uppercase mb-6 tracking-widest flex items-center gap-2">
+              <Activity size={18} className="text-primary" /> Field Summaries
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {numericStats.map(s => (
+                <div key={s.name} className="bg-gray-50 dark:bg-gray-900/50 p-6 rounded-2xl border border-gray-100 dark:border-gray-700 group hover:border-primary transition-colors">
+                  <p className="font-black text-primary text-sm mb-4 uppercase">{s.name}</p>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between text-gray-500 italic"><span>Average:</span> <span className="font-bold text-gray-900 dark:text-gray-100">{s.average}</span></div>
+                    <div className="flex justify-between text-gray-500 italic"><span>Min / Max:</span> <span className="font-medium text-gray-900 dark:text-gray-100">{s.minimum} / {s.maximum}</span></div>
+                    <div className="pt-3 border-t border-gray-200 dark:border-gray-600 flex justify-between items-end">
+                      <span className="text-xs font-bold text-gray-400 uppercase">Total sum:</span>
+                      <span className="text-2xl font-black text-gray-900 dark:text-white">{s.total}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {groupedStats && (
+          <div className="bg-gray-50 dark:bg-gray-900/40 p-6 rounded-3xl border border-gray-100 dark:border-gray-700 mb-12">
+            <h3 className="text-xs font-black text-gray-400 uppercase mb-8 tracking-widest">
+              Comparison by {groupedStats.activeFieldName}
+            </h3>
+            <div className="h-[400px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={groupedStats.data}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#374151" opacity={0.1} />
+                  <XAxis dataKey="name" stroke="#9ca3af" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#9ca3af" fontSize={12} tickLine={false} axisLine={false} />
+                  <Tooltip 
+                    cursor={{fill: 'rgba(59, 130, 246, 0.05)'}}
+                    contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: '#fff' }} 
+                  />
+                  <Legend iconType="circle" />
+                  <Bar dataKey="count" name="Records" fill="#3b82f6" radius={[6, 6, 0, 0]} />
+                  {groupedStats.numericFields.map((nf, i) => (
+                    <Bar key={nf.id} dataKey={nf.name} name={nf.name} fill={COLORS[(i + 1) % COLORS.length]} radius={[6, 6, 0, 0]} />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+
+        {selectorStats && (
+          <div className="pt-10 border-t border-gray-100 dark:border-gray-700 animate-in slide-in-from-bottom-4">
+            <h3 className="text-sm font-black text-gray-400 uppercase mb-8 tracking-widest flex items-center gap-2">
+              <PieIcon size={18} className="text-purple-500" /> Value Distribution
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {selectorStats.map((stat, index) => (
+                <div key={index} className="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm">
+                  <p className="text-center font-black text-xs mb-6 uppercase text-gray-500">{stat.name}</p>
+                  <div className="h-[220px]">
+                    <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
-                        <Pie
-                          data={stat.data}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                          outerRadius={80}
-                          fill="#8884d8"
+                        <Pie 
+                          data={stat.data} 
+                          innerRadius={60} 
+                          outerRadius={85} 
+                          paddingAngle={8} 
                           dataKey="value"
+                          stroke="none"
                         >
                           {stat.data.map((entry, i) => (
                             <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />
                           ))}
                         </Pie>
-                        <Tooltip />
+                        <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px' }} />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
-                ))}
+                  <div className="mt-4 flex flex-wrap justify-center gap-4">
+                    {stat.data.map((d, i) => (
+                      <div key={i} className="flex items-center gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }}></div>
+                        <span className="text-[10px] font-bold text-gray-500 uppercase">{d.name} ({d.value})</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {selectedFormType === 'all' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mt-6">
+            <div className="space-y-4">
+              <h4 className="text-xs font-bold text-gray-400 uppercase">Records per Form Type</h4>
+              <div className="h-[300px] bg-gray-50 dark:bg-gray-900/20 p-4 rounded-2xl border border-gray-100 dark:border-gray-800">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={formTypes.map(f => ({ name: f.name, count: records.filter(r => r.form_type_id === f.id).length }))}>
+                    <XAxis dataKey="name" stroke="#9ca3af" fontSize={10} axisLine={false} tickLine={false} />
+                    <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px' }} />
+                    <Bar dataKey="count" fill="#10b981" radius={[10, 10, 10, 10]} barSize={40} />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
             </div>
-          )}
-
-          {selectedFormType !== 'all' && !numericStats && !selectorStats && (
-            <p className="text-gray-600 dark:text-gray-400 text-center py-8">
-              Not enough data to show statistics for this form.
-            </p>
-          )}
-        </div>
-      )}
-
-      {records.length === 0 && (
-        <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-          <p className="text-gray-600 dark:text-gray-400">
-            No records to show statistics. Start by creating records!
-          </p>
-        </div>
-      )}
+            <div className="space-y-4">
+              <h4 className="text-xs font-bold text-gray-400 uppercase">Submission Activity</h4>
+              <div className="h-[300px] bg-gray-50 dark:bg-gray-900/20 p-4 rounded-2xl border border-gray-100 dark:border-gray-800">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={records.slice(-10).map((r, i) => ({ i, val: i + 1 }))}>
+                    <Line type="monotone" dataKey="val" stroke="#3b82f6" strokeWidth={4} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
