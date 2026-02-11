@@ -4,13 +4,8 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  base: '/dsblive/', 
-  server: {
-    open: true,
-    strictPort: true,
-  },
+  base: '/DSBlive/',
   build: {
-    outDir: 'dist',
-    assetsDir: 'assets',
+    outDir: 'dist'
   }
 })

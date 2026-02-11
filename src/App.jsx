@@ -9,7 +9,7 @@ import RecordsPage from './pages/RecordsPage'
 function App() {
   return (
     <AppProvider>
-      <BrowserRouter basename="/dsblive/">
+      <BrowserRouter basename="/DSBlive/">
         <Layout>
           <Routes>
             <Route path="/" element={<DashboardPage />} />
