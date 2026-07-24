@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS records (
     id BIGSERIAL PRIMARY KEY,
     form_type_id BIGINT NOT NULL REFERENCES form_types(id) ON DELETE CASCADE,
     data JSONB NOT NULL,
+    is_favorite BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

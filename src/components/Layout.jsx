@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Sun, Moon, Database, FileText, ClipboardList, BarChart3, PieChart, LogOut, Eye } from 'lucide-react'
+import { Sun, Moon, Database, FileText, ClipboardList, BarChart3, PieChart, Star, LogOut, Eye } from 'lucide-react'
 import { useApp } from '../contexts/AppContext'
 import { useAuth } from '../contexts/AuthContext'
 import { authService } from '../services/supabase'
@@ -16,6 +16,7 @@ export default function Layout({ children }) {
     { path: '/fields', icon: Database, label: 'Fields' },
     { path: '/forms', icon: FileText, label: 'Forms' },
     { path: '/records', icon: ClipboardList, label: 'Records' },
+    { path: '/favorites', icon: Star, label: 'Favorites' },
     { path: '/charts', icon: PieChart, label: 'Charts' }
   ]
 

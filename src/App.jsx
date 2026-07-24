@@ -32,6 +32,7 @@ function AppContent() {
           <Route path="/fields" element={<FieldsPage />} />
           <Route path="/forms" element={<FormsPage />} />
           <Route path="/records" element={<RecordsPage />} />
+          <Route path="/favorites" element={<RecordsPage favoritesOnly />} />
           <Route path="/charts" element={<ChartsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

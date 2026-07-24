@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useApp } from '../contexts/AppContext'
 import { useAuth } from '../contexts/AuthContext'
-import { Plus, Edit2, Trash2, X, Save, Filter, Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Edit2, Trash2, X, Save, Filter, Search, ChevronLeft, ChevronRight, Star, Copy } from 'lucide-react'
 
 const PAGE_SIZE = 25
 
-export default function RecordsPage() {
+export default function RecordsPage({ favoritesOnly = false }) {
   const { fields, formTypes, records, createRecord, updateRecord, deleteRecord, loading } = useApp()
   const { isOwner } = useAuth()
   const [showForm, setShowForm] = useState(false)
@@ -61,6 +61,27 @@ export default function RecordsPage() {
         await createRecord(recordData)
       }
       resetForm()
+    } catch (error) {
+      alert('Error: ' + error.message)
+    }
+  }
+
+  // Duplicate a record with the same data but the current timestamp.
+  const handleDuplicate = async (record) => {
+    try {
+      await createRecord({
+        form_type_id: record.form_type_id,
+        data: { ...record.data },
+        created_at: new Date().toISOString()
+      })
+    } catch (error) {
+      alert('Error: ' + error.message)
+    }
+  }
+
+  const handleToggleFavorite = async (record) => {
+    try {
+      await updateRecord(record.id, { is_favorite: !record.is_favorite })
     } catch (error) {
       alert('Error: ' + error.message)
     }
@@ -176,9 +197,10 @@ export default function RecordsPage() {
   }
 
   const query = search.trim().toLowerCase()
+  const baseRecords = favoritesOnly ? records.filter(r => r.is_favorite) : records
   const byFormType = filterFormType === 'all'
-    ? records
-    : records.filter(r => r.form_type_id === Number(filterFormType))
+    ? baseRecords
+    : baseRecords.filter(r => r.form_type_id === Number(filterFormType))
   const filteredRecords = query
     ? byFormType.filter(r => {
         const form = formTypes.find(f => f.id === r.form_type_id)
@@ -204,21 +226,23 @@ export default function RecordsPage() {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Record Management
+            {favoritesOnly ? 'Favorites' : 'Record Management'}
           </h2>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Register data using your forms
+            {favoritesOnly ? 'Your starred records for quick reuse' : 'Register data using your forms'}
           </p>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          disabled={!isOwner || formTypes.length === 0}
-          title={!isOwner ? 'Read-only demo — sign in as owner to edit' : undefined}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600"
-        >
-          <Plus className="w-4 h-4" />
-          New Record
-        </button>
+        {!favoritesOnly && (
+          <button
+            onClick={() => setShowForm(true)}
+            disabled={!isOwner || formTypes.length === 0}
+            title={!isOwner ? 'Read-only demo — sign in as owner to edit' : undefined}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600"
+          >
+            <Plus className="w-4 h-4" />
+            New Record
+          </button>
+        )}
       </div>
 
       {formTypes.length === 0 && (
@@ -313,7 +337,7 @@ export default function RecordsPage() {
         </div>
       )}
 
-      {records.length > 0 && (
+      {baseRecords.length > 0 && (
         <div className="flex flex-wrap items-center gap-3 mb-4">
           <Filter className="w-5 h-5 text-gray-500" />
           <select
@@ -347,9 +371,11 @@ export default function RecordsPage() {
       {filteredRecords.length === 0 ? (
         <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
           <p className="text-gray-600 dark:text-gray-400">
-            {records.length === 0
-              ? 'No records yet. Create your first record!'
-              : 'No records match the current filters.'}
+            {favoritesOnly && baseRecords.length === 0
+              ? 'No favorites yet. Star a record to add it here.'
+              : records.length === 0
+                ? 'No records yet. Create your first record!'
+                : 'No records match the current filters.'}
           </p>
         </div>
       ) : (
@@ -372,6 +398,22 @@ export default function RecordsPage() {
                     </p>
                   </div>
                   <div className="flex gap-1">
+                    <button
+                      onClick={() => handleToggleFavorite(record)}
+                      disabled={!isOwner}
+                      title={!isOwner ? 'Read-only demo — sign in as owner to edit' : record.is_favorite ? 'Remove from favorites' : 'Add to favorites'}
+                      className={`p-1.5 rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent ${record.is_favorite ? 'text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                    >
+                      <Star className="w-4 h-4" fill={record.is_favorite ? 'currentColor' : 'none'} />
+                    </button>
+                    <button
+                      onClick={() => handleDuplicate(record)}
+                      disabled={!isOwner}
+                      title={!isOwner ? 'Read-only demo — sign in as owner to edit' : 'Duplicate with current date'}
+                      className="p-1.5 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </button>
                     <button
                       onClick={() => handleEdit(record)}
                       disabled={!isOwner}
