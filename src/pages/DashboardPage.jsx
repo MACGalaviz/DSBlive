@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useApp } from '../contexts/AppContext'
-import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-import { TrendingUp, Database, FileText, ClipboardList, Layers, LayoutDashboard, PieChart as PieIcon, Activity } from 'lucide-react'
+import { BarChart, Bar, LineChart, Line, AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { TrendingUp, Database, FileText, ClipboardList, Layers, LayoutDashboard, PieChart as PieIcon, Activity, CalendarClock } from 'lucide-react'
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899']
 
@@ -33,7 +33,10 @@ export default function DashboardPage() {
 
     const allFields = form.form_fields.map(ff => ff.fields);
     const numericFields = allFields.filter(f => f.data_type === 'number');
-    const activeGroupFieldId = groupByField || allFields[0]?.id;
+    // Default to a categorical field (selector/boolean). Grouping by free-text
+    // like a name produces one tiny group per value, which is noise.
+    const defaultGroupField = allFields.find(f => f.data_type === 'selector' || f.data_type === 'boolean') || allFields[0];
+    const activeGroupFieldId = groupByField || defaultGroupField?.id;
     
     if (!activeGroupFieldId) return null;
 
@@ -100,6 +103,49 @@ export default function DashboardPage() {
       const data = Object.entries(counts).map(([name, value]) => ({ name, value }))
       return { name: field.name, data }
     }).filter(s => s.data.length > 0)
+  }, [selectedFormType, filteredRecords, formTypes])
+
+  // Records grouped by month (YYYY-MM) — works for both global and per-form.
+  const timeSeries = useMemo(() => {
+    if (!filteredRecords.length) return []
+    const byMonth = {}
+    filteredRecords.forEach(r => {
+      const key = new Date(r.created_at).toISOString().slice(0, 7)
+      byMonth[key] = (byMonth[key] || 0) + 1
+    })
+    return Object.entries(byMonth)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([month, count]) => ({ month, count }))
+  }, [filteredRecords])
+
+  // Global: share of records per form type (donut).
+  const recordsShare = useMemo(() =>
+    formTypes
+      .map(f => ({ name: f.name, value: records.filter(r => r.form_type_id === f.id).length }))
+      .filter(d => d.value > 0)
+  , [formTypes, records])
+
+  // Per-form: monthly sum of each numeric field (multi-line trend).
+  const numericTrend = useMemo(() => {
+    if (selectedFormType === 'all' || !filteredRecords.length) return null
+    const form = formTypes.find(f => f.id.toString() === selectedFormType.toString())
+    if (!form || !form.form_fields) return null
+    const numericFields = form.form_fields.map(ff => ff.fields).filter(f => f.data_type === 'number')
+    if (numericFields.length === 0) return null
+
+    const byMonth = {}
+    filteredRecords.forEach(r => {
+      const key = new Date(r.created_at).toISOString().slice(0, 7)
+      if (!byMonth[key]) byMonth[key] = { month: key, ...numericFields.reduce((a, nf) => ({ ...a, [nf.name]: 0 }), {}) }
+      numericFields.forEach(nf => {
+        const v = parseFloat(r.data[nf.id])
+        if (!isNaN(v)) byMonth[key][nf.name] += v
+      })
+    })
+    return {
+      data: Object.values(byMonth).sort((a, b) => a.month.localeCompare(b.month)),
+      numericFields
+    }
   }, [selectedFormType, filteredRecords, formTypes])
 
   if (loading) return <div className="flex justify-center items-center h-96 text-primary font-bold animate-pulse">Loading Analytics...</div>
@@ -265,27 +311,106 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {selectedFormType === 'all' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mt-6">
+        {selectedFormType !== 'all' && timeSeries.length > 0 && (
+          <div className="pt-10 border-t border-gray-100 dark:border-gray-700 animate-in fade-in duration-500 space-y-10">
             <div className="space-y-4">
-              <h4 className="text-xs font-bold text-gray-400 uppercase">Records per Form Type</h4>
+              <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                <CalendarClock size={18} className="text-primary" /> Activity Over Time
+              </h3>
               <div className="h-[300px] bg-gray-50 dark:bg-gray-900/20 p-4 rounded-2xl border border-gray-100 dark:border-gray-800">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={formTypes.map(f => ({ name: f.name, count: records.filter(r => r.form_type_id === f.id).length }))}>
-                    <XAxis dataKey="name" stroke="#9ca3af" fontSize={10} axisLine={false} tickLine={false} />
-                    <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px' }} />
-                    <Bar dataKey="count" fill="#10b981" radius={[10, 10, 10, 10]} barSize={40} />
-                  </BarChart>
+                  <AreaChart data={timeSeries}>
+                    <defs>
+                      <linearGradient id="formActivity" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#374151" opacity={0.1} />
+                    <XAxis dataKey="month" stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
+                    <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: '#fff' }} />
+                    <Area type="monotone" dataKey="count" name="Records" stroke="#3b82f6" strokeWidth={3} fill="url(#formActivity)" />
+                  </AreaChart>
                 </ResponsiveContainer>
               </div>
             </div>
+
+            {numericTrend && (
+              <div className="space-y-4">
+                <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                  <TrendingUp size={18} className="text-green-500" /> Numeric Trends (monthly total)
+                </h3>
+                <div className="h-[320px] bg-gray-50 dark:bg-gray-900/20 p-4 rounded-2xl border border-gray-100 dark:border-gray-800">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={numericTrend.data}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#374151" opacity={0.1} />
+                      <XAxis dataKey="month" stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} />
+                      <YAxis stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} />
+                      <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: '#fff' }} />
+                      <Legend iconType="circle" />
+                      {numericTrend.numericFields.map((nf, i) => (
+                        <Line key={nf.id} type="monotone" dataKey={nf.name} name={nf.name} stroke={COLORS[i % COLORS.length]} strokeWidth={2.5} dot={false} />
+                      ))}
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {selectedFormType === 'all' && (
+          <div className="space-y-10 mt-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+              <div className="space-y-4">
+                <h4 className="text-xs font-bold text-gray-400 uppercase">Records per Form Type</h4>
+                <div className="h-[300px] bg-gray-50 dark:bg-gray-900/20 p-4 rounded-2xl border border-gray-100 dark:border-gray-800">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart layout="vertical" data={formTypes.map(f => ({ name: f.name, count: records.filter(r => r.form_type_id === f.id).length })).sort((a, b) => b.count - a.count)}>
+                      <XAxis type="number" stroke="#9ca3af" fontSize={10} axisLine={false} tickLine={false} allowDecimals={false} />
+                      <YAxis type="category" dataKey="name" stroke="#9ca3af" fontSize={10} axisLine={false} tickLine={false} width={110} />
+                      <Tooltip cursor={{fill: 'rgba(16,185,129,0.05)'}} contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px' }} />
+                      <Bar dataKey="count" fill="#10b981" radius={[0, 8, 8, 0]} barSize={18} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+              <div className="space-y-4">
+                <h4 className="text-xs font-bold text-gray-400 uppercase">Record Share</h4>
+                <div className="h-[300px] bg-gray-50 dark:bg-gray-900/20 p-4 rounded-2xl border border-gray-100 dark:border-gray-800">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={recordsShare} innerRadius={55} outerRadius={95} paddingAngle={3} dataKey="value" nameKey="name" stroke="none">
+                        {recordsShare.map((entry, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                      </Pie>
+                      <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: '#fff' }} />
+                      <Legend iconType="circle" layout="vertical" align="right" verticalAlign="middle" wrapperStyle={{ fontSize: '11px' }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-4">
-              <h4 className="text-xs font-bold text-gray-400 uppercase">Submission Activity</h4>
+              <h4 className="text-xs font-bold text-gray-400 uppercase flex items-center gap-2">
+                <CalendarClock size={16} className="text-primary" /> Submission Activity (monthly)
+              </h4>
               <div className="h-[300px] bg-gray-50 dark:bg-gray-900/20 p-4 rounded-2xl border border-gray-100 dark:border-gray-800">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={records.slice(-10).map((r, i) => ({ i, val: i + 1 }))}>
-                    <Line type="monotone" dataKey="val" stroke="#3b82f6" strokeWidth={4} dot={false} />
-                  </LineChart>
+                  <AreaChart data={timeSeries}>
+                    <defs>
+                      <linearGradient id="globalActivity" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#374151" opacity={0.1} />
+                    <XAxis dataKey="month" stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
+                    <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: '#fff' }} />
+                    <Area type="monotone" dataKey="count" name="Records" stroke="#3b82f6" strokeWidth={3} fill="url(#globalActivity)" />
+                  </AreaChart>
                 </ResponsiveContainer>
               </div>
             </div>
