@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useApp } from '../contexts/AppContext'
 import { useAuth } from '../contexts/AuthContext'
-import { Plus, Edit2, Trash2, X, Save, Filter, Search } from 'lucide-react'
+import { Plus, Edit2, Trash2, X, Save, Filter, Search, ChevronLeft, ChevronRight } from 'lucide-react'
+
+const PAGE_SIZE = 25
 
 export default function RecordsPage() {
   const { fields, formTypes, records, createRecord, updateRecord, deleteRecord, loading } = useApp()
@@ -11,7 +13,11 @@ export default function RecordsPage() {
   const [selectedFormType, setSelectedFormType] = useState(null)
   const [filterFormType, setFilterFormType] = useState('all')
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
   const [formValues, setFormValues] = useState({})
+
+  // Reset to first page whenever the filters change.
+  useEffect(() => { setPage(1) }, [filterFormType, search])
 
   const resetForm = () => {
     setFormValues({})
@@ -181,6 +187,10 @@ export default function RecordsPage() {
       })
     : byFormType
 
+  const totalPages = Math.max(1, Math.ceil(filteredRecords.length / PAGE_SIZE))
+  const currentPage = Math.min(page, totalPages)
+  const pageRecords = filteredRecords.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -344,7 +354,7 @@ export default function RecordsPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {filteredRecords.map(record => {
+          {pageRecords.map(record => {
             const form = formTypes.find(f => f.id === record.form_type_id)
             
             return (
@@ -401,6 +411,30 @@ export default function RecordsPage() {
               </div>
             )
           })}
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-4 pt-4">
+              <button
+                onClick={() => setPage(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="flex items-center gap-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Previous
+              </button>
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                onClick={() => setPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="flex items-center gap-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Next
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
