@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useApp } from '../contexts/AppContext'
 import { useAuth } from '../contexts/AuthContext'
-import { Plus, Edit2, Trash2, X, Save, Filter } from 'lucide-react'
+import { Plus, Edit2, Trash2, X, Save, Filter, Search } from 'lucide-react'
 
 export default function RecordsPage() {
   const { fields, formTypes, records, createRecord, updateRecord, deleteRecord, loading } = useApp()
@@ -10,6 +10,7 @@ export default function RecordsPage() {
   const [editingId, setEditingId] = useState(null)
   const [selectedFormType, setSelectedFormType] = useState(null)
   const [filterFormType, setFilterFormType] = useState('all')
+  const [search, setSearch] = useState('')
   const [formValues, setFormValues] = useState({})
 
   const resetForm = () => {
@@ -168,9 +169,17 @@ export default function RecordsPage() {
     }
   }
 
-  const filteredRecords = filterFormType === 'all'
+  const query = search.trim().toLowerCase()
+  const byFormType = filterFormType === 'all'
     ? records
     : records.filter(r => r.form_type_id === Number(filterFormType))
+  const filteredRecords = query
+    ? byFormType.filter(r => {
+        const form = formTypes.find(f => f.id === r.form_type_id)
+        const haystack = [form?.name, ...Object.values(r.data || {})].join(' ').toLowerCase()
+        return haystack.includes(query)
+      })
+    : byFormType
 
   if (loading) {
     return (
@@ -295,7 +304,7 @@ export default function RecordsPage() {
       )}
 
       {records.length > 0 && (
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex flex-wrap items-center gap-3 mb-4">
           <Filter className="w-5 h-5 text-gray-500" />
           <select
             value={filterFormType}
@@ -309,6 +318,16 @@ export default function RecordsPage() {
               </option>
             ))}
           </select>
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search values..."
+              className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
           <span className="text-sm text-gray-600 dark:text-gray-400">
             {filteredRecords.length} record(s)
           </span>
@@ -318,7 +337,9 @@ export default function RecordsPage() {
       {filteredRecords.length === 0 ? (
         <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
           <p className="text-gray-600 dark:text-gray-400">
-            No records yet. Create your first record!
+            {records.length === 0
+              ? 'No records yet. Create your first record!'
+              : 'No records match the current filters.'}
           </p>
         </div>
       ) : (

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useApp } from '../contexts/AppContext'
 import { useAuth } from '../contexts/AuthContext'
-import { Plus, Edit2, Trash2, X, Save } from 'lucide-react'
+import { Plus, Edit2, Trash2, X, Save, Search } from 'lucide-react'
 
 const DATA_TYPES = [
   { value: 'text', label: 'Text' },
@@ -17,11 +17,21 @@ export default function FieldsPage() {
   const { isOwner } = useAuth()
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
+  const [search, setSearch] = useState('')
   const [formData, setFormData] = useState({
     name: '',
     data_type: 'text',
     options: ''
   })
+
+  const query = search.trim().toLowerCase()
+  const filteredFields = query
+    ? fields.filter(f =>
+        f.name.toLowerCase().includes(query) ||
+        f.data_type.toLowerCase().includes(query) ||
+        (f.options?.join(' ').toLowerCase().includes(query))
+      )
+    : fields
 
   const resetForm = () => {
     setFormData({ name: '', data_type: 'text', options: '' })
@@ -185,6 +195,20 @@ export default function FieldsPage() {
         </div>
       )}
 
+      {/* Search */}
+      {fields.length > 0 && (
+        <div className="relative mb-4">
+          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name, type or options..."
+            className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+      )}
+
       {/* Field List */}
       {fields.length === 0 ? (
         <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
@@ -192,9 +216,15 @@ export default function FieldsPage() {
             No fields created yet. Create your first field!
           </p>
         </div>
+      ) : filteredFields.length === 0 ? (
+        <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+          <p className="text-gray-600 dark:text-gray-400">
+            No fields match &quot;{search}&quot;.
+          </p>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {fields.map(field => (
+          {filteredFields.map(field => (
             <div
               key={field.id}
               className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow"

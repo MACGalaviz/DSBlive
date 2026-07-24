@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useApp } from '../contexts/AppContext'
 import { useAuth } from '../contexts/AuthContext'
-import { Plus, Edit2, Trash2, X, Save, GripVertical, BarChart3 } from 'lucide-react'
+import { Plus, Edit2, Trash2, X, Save, GripVertical, BarChart3, Search } from 'lucide-react'
 import { availableCharts, countFieldTypes } from '../utils/charts'
 
 export default function FormsPage() {
@@ -14,8 +14,18 @@ export default function FormsPage() {
     description: ''
   })
   const [selectedFields, setSelectedFields] = useState([])
+  const [search, setSearch] = useState('')
   // Enabled dashboard charts for this form. null => all applicable charts.
   const [chartConfig, setChartConfig] = useState(null)
+
+  const query = search.trim().toLowerCase()
+  const filteredForms = query
+    ? formTypes.filter(form =>
+        form.name.toLowerCase().includes(query) ||
+        (form.description || '').toLowerCase().includes(query) ||
+        form.form_fields?.some(ff => ff.fields.name.toLowerCase().includes(query))
+      )
+    : formTypes
 
   const resetForm = () => {
     setFormData({ name: '', description: '' })
@@ -319,15 +329,34 @@ export default function FormsPage() {
         </div>
       )}
 
+      {formTypes.length > 0 && (
+        <div className="relative mb-4">
+          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name, description or field..."
+            className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+      )}
+
       {formTypes.length === 0 ? (
         <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
           <p className="text-gray-600 dark:text-gray-400">
             No forms created yet. Create your first form!
           </p>
         </div>
+      ) : filteredForms.length === 0 ? (
+        <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+          <p className="text-gray-600 dark:text-gray-400">
+            No forms match &quot;{search}&quot;.
+          </p>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {formTypes.map(form => (
+          {filteredForms.map(form => (
             <div
               key={form.id}
               className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow"
