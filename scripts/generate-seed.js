@@ -256,7 +256,7 @@ FORMS.forEach((form, fi) => {
     form.fields.forEach((f) => {
       data[f._id] = String(f.gen(f.options || null, ts))
     })
-    records.push({ formId, data, createdAt: ts.toISOString() })
+    records.push({ formId, data, createdAt: ts.toISOString(), isFavorite: chance(0.08) })
   }
 })
 
@@ -315,12 +315,12 @@ lines.push('-- Records')
 const CHUNK = 500
 for (let i = 0; i < records.length; i += CHUNK) {
   const chunk = records.slice(i, i + CHUNK)
-  lines.push('INSERT INTO records (form_type_id, data, created_at) VALUES')
+  lines.push('INSERT INTO records (form_type_id, data, created_at, is_favorite) VALUES')
   lines.push(
     chunk
       .map(
         (r) =>
-          `  (${r.formId}, '${esc(JSON.stringify(r.data))}', '${r.createdAt}')`
+          `  (${r.formId}, '${esc(JSON.stringify(r.data))}', '${r.createdAt}', ${r.isFavorite})`
       )
       .join(',\n') + ';'
   )
