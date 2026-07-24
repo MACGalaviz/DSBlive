@@ -170,7 +170,7 @@ export default function RecordsPage() {
 
   const filteredRecords = filterFormType === 'all'
     ? records
-    : records.filter(r => r.form_type_id === filterFormType)
+    : records.filter(r => r.form_type_id === Number(filterFormType))
 
   if (loading) {
     return (
