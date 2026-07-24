@@ -82,7 +82,7 @@ export const formTypeService = {
     // Create form
     const { data: newForm, error: formError } = await supabase
       .from('form_types')
-      .insert([{ name: formType.name, description: formType.description }])
+      .insert([{ name: formType.name, description: formType.description, chart_config: formType.chart_config ?? null }])
       .select()
     
     if (formError) throw formError
@@ -107,7 +107,7 @@ export const formTypeService = {
     // Update form
     const { error: formError } = await supabase
       .from('form_types')
-      .update({ name: formType.name, description: formType.description })
+      .update({ name: formType.name, description: formType.description, chart_config: formType.chart_config ?? null })
       .eq('id', id)
     
     if (formError) throw formError

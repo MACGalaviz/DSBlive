@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS form_types (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     description TEXT,
+    chart_config JSONB,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

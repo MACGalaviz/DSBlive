@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { useApp } from '../contexts/AppContext'
 import { BarChart, Bar, LineChart, Line, AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { TrendingUp, Database, FileText, ClipboardList, Layers, LayoutDashboard, PieChart as PieIcon, Activity, CalendarClock } from 'lucide-react'
+import { isChartEnabled } from '../utils/charts'
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899']
 
@@ -148,6 +149,9 @@ export default function DashboardPage() {
     }
   }, [selectedFormType, filteredRecords, formTypes])
 
+  // Enabled charts for the selected form (null => all applicable).
+  const chartConfig = formTypes.find(f => f.id.toString() === selectedFormType.toString())?.chart_config
+
   if (loading) return <div className="flex justify-center items-center h-96 text-primary font-bold animate-pulse">Loading Analytics...</div>
 
   return (
@@ -195,7 +199,7 @@ export default function DashboardPage() {
             </select>
           </div>
 
-          {groupedStats && (
+          {groupedStats && isChartEnabled(chartConfig, 'comparison') && (
             <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-left-4 duration-500">
               <label className="text-[11px] font-black uppercase tracking-widest text-primary flex items-center gap-2 px-1">
                 <Layers size={14} /> 2. Group & Compare by
@@ -220,7 +224,7 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {numericStats && (
+        {numericStats && isChartEnabled(chartConfig, 'summaries') && (
           <div className="mb-12 animate-in fade-in duration-500">
             <h3 className="text-sm font-black text-gray-400 uppercase mb-6 tracking-widest flex items-center gap-2">
               <Activity size={18} className="text-primary" /> Field Summaries
@@ -243,7 +247,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {groupedStats && (
+        {groupedStats && isChartEnabled(chartConfig, 'comparison') && (
           <div className="bg-gray-50 dark:bg-gray-900/40 p-6 rounded-3xl border border-gray-100 dark:border-gray-700 mb-12">
             <h3 className="text-xs font-black text-gray-400 uppercase mb-8 tracking-widest">
               Comparison by {groupedStats.activeFieldName}
@@ -269,7 +273,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {selectorStats && (
+        {selectorStats && isChartEnabled(chartConfig, 'distribution') && (
           <div className="pt-10 border-t border-gray-100 dark:border-gray-700 animate-in slide-in-from-bottom-4">
             <h3 className="text-sm font-black text-gray-400 uppercase mb-8 tracking-widest flex items-center gap-2">
               <PieIcon size={18} className="text-purple-500" /> Value Distribution
@@ -311,52 +315,50 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {selectedFormType !== 'all' && timeSeries.length > 0 && (
-          <div className="pt-10 border-t border-gray-100 dark:border-gray-700 animate-in fade-in duration-500 space-y-10">
-            <div className="space-y-4">
-              <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                <CalendarClock size={18} className="text-primary" /> Activity Over Time
-              </h3>
-              <div className="h-[300px] bg-gray-50 dark:bg-gray-900/20 p-4 rounded-2xl border border-gray-100 dark:border-gray-800">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={timeSeries}>
-                    <defs>
-                      <linearGradient id="formActivity" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
-                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#374151" opacity={0.1} />
-                    <XAxis dataKey="month" stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} />
-                    <YAxis stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
-                    <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: '#fff' }} />
-                    <Area type="monotone" dataKey="count" name="Records" stroke="#3b82f6" strokeWidth={3} fill="url(#formActivity)" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
+        {selectedFormType !== 'all' && timeSeries.length > 0 && isChartEnabled(chartConfig, 'activity') && (
+          <div className="pt-10 border-t border-gray-100 dark:border-gray-700 animate-in fade-in duration-500 space-y-4">
+            <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+              <CalendarClock size={18} className="text-primary" /> Activity Over Time
+            </h3>
+            <div className="h-[300px] bg-gray-50 dark:bg-gray-900/20 p-4 rounded-2xl border border-gray-100 dark:border-gray-800">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={timeSeries}>
+                  <defs>
+                    <linearGradient id="formActivity" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#374151" opacity={0.1} />
+                  <XAxis dataKey="month" stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
+                  <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: '#fff' }} />
+                  <Area type="monotone" dataKey="count" name="Records" stroke="#3b82f6" strokeWidth={3} fill="url(#formActivity)" />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
+          </div>
+        )}
 
-            {numericTrend && (
-              <div className="space-y-4">
-                <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                  <TrendingUp size={18} className="text-green-500" /> Numeric Trends (monthly total)
-                </h3>
-                <div className="h-[320px] bg-gray-50 dark:bg-gray-900/20 p-4 rounded-2xl border border-gray-100 dark:border-gray-800">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={numericTrend.data}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#374151" opacity={0.1} />
-                      <XAxis dataKey="month" stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} />
-                      <YAxis stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} />
-                      <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: '#fff' }} />
-                      <Legend iconType="circle" />
-                      {numericTrend.numericFields.map((nf, i) => (
-                        <Line key={nf.id} type="monotone" dataKey={nf.name} name={nf.name} stroke={COLORS[i % COLORS.length]} strokeWidth={2.5} dot={false} />
-                      ))}
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            )}
+        {selectedFormType !== 'all' && numericTrend && isChartEnabled(chartConfig, 'trend') && (
+          <div className="pt-10 border-t border-gray-100 dark:border-gray-700 animate-in fade-in duration-500 space-y-4">
+            <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+              <TrendingUp size={18} className="text-green-500" /> Numeric Trends (monthly total)
+            </h3>
+            <div className="h-[320px] bg-gray-50 dark:bg-gray-900/20 p-4 rounded-2xl border border-gray-100 dark:border-gray-800">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={numericTrend.data}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#374151" opacity={0.1} />
+                  <XAxis dataKey="month" stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} />
+                  <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: '#fff' }} />
+                  <Legend iconType="circle" />
+                  {numericTrend.numericFields.map((nf, i) => (
+                    <Line key={nf.id} type="monotone" dataKey={nf.name} name={nf.name} stroke={COLORS[i % COLORS.length]} strokeWidth={2.5} dot={false} />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         )}
 

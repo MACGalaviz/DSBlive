@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useApp } from '../contexts/AppContext'
 import { useAuth } from '../contexts/AuthContext'
-import { Plus, Edit2, Trash2, X, Save, GripVertical } from 'lucide-react'
+import { Plus, Edit2, Trash2, X, Save, GripVertical, BarChart3 } from 'lucide-react'
+import { availableCharts, countFieldTypes } from '../utils/charts'
 
 export default function FormsPage() {
   const { fields, formTypes, createFormType, updateFormType, deleteFormType, loading } = useApp()
@@ -13,10 +14,13 @@ export default function FormsPage() {
     description: ''
   })
   const [selectedFields, setSelectedFields] = useState([])
+  // Enabled dashboard charts for this form. null => all applicable charts.
+  const [chartConfig, setChartConfig] = useState(null)
 
   const resetForm = () => {
     setFormData({ name: '', description: '' })
     setSelectedFields([])
+    setChartConfig(null)
     setEditingId(null)
     setShowForm(false)
   }
@@ -26,14 +30,25 @@ export default function FormsPage() {
       name: formType.name,
       description: formType.description || ''
     })
-    
+
     const sortedFields = formType.form_fields
       .sort((a, b) => a.sort_order - b.sort_order)
       .map(ff => ff.fields.id)
-    
+
     setSelectedFields(sortedFields)
+    setChartConfig(formType.chart_config ?? null)
     setEditingId(formType.id)
     setShowForm(true)
+  }
+
+  // Charts available given the currently selected fields' types.
+  const selectedFieldObjects = selectedFields.map(id => fields.find(f => f.id === id)).filter(Boolean)
+  const chartOptions = availableCharts(countFieldTypes(selectedFieldObjects))
+  const enabledChartKeys = chartConfig ?? chartOptions.map(c => c.key)
+  const isChartChecked = (key) => enabledChartKeys.includes(key)
+  const toggleChart = (key) => {
+    const base = chartConfig ?? chartOptions.map(c => c.key)
+    setChartConfig(base.includes(key) ? base.filter(k => k !== key) : [...base, key])
   }
 
   const toggleField = (fieldId) => {
@@ -63,10 +78,11 @@ export default function FormsPage() {
     }
 
     try {
+      const payload = { ...formData, chart_config: chartConfig }
       if (editingId) {
-        await updateFormType(editingId, formData, selectedFields)
+        await updateFormType(editingId, payload, selectedFields)
       } else {
-        await createFormType(formData, selectedFields)
+        await createFormType(payload, selectedFields)
       }
       resetForm()
     } catch (error) {
@@ -241,6 +257,47 @@ export default function FormsPage() {
                 </div>
               )}
             </div>
+
+            {chartOptions.length > 0 && (
+              <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <BarChart3 className="w-4 h-4" />
+                  Dashboard Charts
+                </label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                  Choose which charts appear for this form. Options depend on the selected field types.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {chartOptions.map(chart => (
+                    <label
+                      key={chart.key}
+                      className={`
+                        flex items-start gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all
+                        ${isChartChecked(chart.key)
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                          : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
+                        }
+                      `}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChartChecked(chart.key)}
+                        onChange={() => toggleChart(chart.key)}
+                        className="w-4 h-4 mt-0.5"
+                      />
+                      <span>
+                        <span className="block text-gray-900 dark:text-white font-medium">
+                          {chart.label}
+                        </span>
+                        <span className="block text-xs text-gray-500 dark:text-gray-400">
+                          {chart.description}
+                        </span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="flex gap-2">
               <button
