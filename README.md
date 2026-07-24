@@ -2,6 +2,22 @@
 
 A modern web application for creating and managing dynamic forms with real-time statistics.
 
+## 👁️ Access Model
+
+The app is a **public read-only showcase**: anyone can browse the forms, records
+and dashboards. Only the **owner account** can create, edit or delete data.
+This is enforced at the database level with Supabase RLS — hidden/disabled
+buttons in the UI are only cosmetic.
+
+**Demo access (read-only):**
+
+```
+Email:    demo@dsblive.app
+Password: DemoDSB2026
+```
+
+Log in with those credentials to explore. Editing controls stay disabled.
+
 ## 🚀 Features
 
 - ✅ **Dynamic Field Creation** - Define reusable attributes (text, number, date, selector, etc.)
@@ -72,6 +88,24 @@ This will create the tables:
    - **Project URL** (something like: `https://xxxxx.supabase.co`)
    - **anon/public key** (public key)
 
+#### d) Create accounts and lock writes to the owner
+
+1. In Supabase, go to **Authentication** > **Users** > **Add user** and create:
+   - your **owner** account (your real email + password)
+   - a **demo** account (`demo@dsblive.app` / `DemoDSB2026`)
+2. Open your owner user and copy its **User UID**.
+3. In `supabase-setup.sql`, replace every `OWNER_USER_ID` with that UID, then
+   run the whole script in the SQL Editor.
+4. In `src/contexts/AuthContext.jsx`, set `OWNER_UID` to the same UID so the
+   owner sees the editing controls enabled (non-owners get read-only UI).
+5. Go to **Authentication** > **Providers** (or **Sign In / Providers**) and
+   **disable new sign-ups**, so only these two accounts can ever exist.
+
+#### e) (Optional) Load demo data
+
+Run `supabase-example-data.sql` in the SQL Editor on the fresh database to
+populate example fields, forms and records for the showcase.
+
 ### 4. Configure Environment Variables
 
 Open `src/services/supabase.js` and replace:
@@ -94,7 +128,7 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
 npm run dev
 ```
 
-The application will be available at `http://localhost:5173/dsblive/`
+The application will be available at `http://localhost:5173/DSBlive/`
 
 ## 📦 Deploy to GitHub Pages
 
@@ -105,7 +139,7 @@ git init
 git add .
 git commit -m "Initial commit"
 git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/dsblive.git
+git remote add origin https://github.com/YOUR_USERNAME/DSBlive.git
 git push -u origin main
 ```
 
@@ -119,7 +153,7 @@ git push -u origin main
 
 The GitHub Actions workflow is already configured. Just push to `main` and it will deploy automatically.
 
-Your app will be at: `https://YOUR_USERNAME.github.io/dsblive/`
+Your app will be at: `https://YOUR_USERNAME.github.io/DSBlive/`
 
 ## 📖 Usage Guide
 
@@ -213,11 +247,20 @@ const DATA_TYPES = [
 
 ## 🔒 Security
 
-⚠️ **IMPORTANT**: Supabase policies are configured for public access. For production:
+Access is **public read, owner-only write**, enforced by Supabase RLS
+(`supabase-setup.sql`):
 
-1. Enable authentication in Supabase
-2. Update RLS policies in `supabase-setup.sql`
-3. Implement login/registration in the app
+- `SELECT` is open to everyone (public showcase).
+- `INSERT` / `UPDATE` / `DELETE` require `auth.uid()` to match the owner UID.
+
+Notes:
+
+- The anon key ships in the client bundle and is **public by design** — it is
+  not a secret. RLS is what protects the data, not hiding the key.
+- Disabling the edit buttons in the UI is cosmetic; the database rejects any
+  non-owner write regardless of the UI.
+- Keep public sign-ups disabled in Supabase so no one can create a writable
+  account. Only the owner and the read-only demo account should exist.
 
 ## 🐛 Troubleshooting
 
