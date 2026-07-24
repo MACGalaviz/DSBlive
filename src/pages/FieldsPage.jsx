@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useApp } from '../contexts/AppContext'
+import { useAuth } from '../contexts/AuthContext'
 import { Plus, Edit2, Trash2, X, Save } from 'lucide-react'
 
 const DATA_TYPES = [
@@ -13,6 +14,7 @@ const DATA_TYPES = [
 
 export default function FieldsPage() {
   const { fields, createField, updateField, deleteField, loading } = useApp()
+  const { isOwner } = useAuth()
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [formData, setFormData] = useState({
@@ -91,7 +93,9 @@ export default function FieldsPage() {
         </div>
         <button
           onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+          disabled={!isOwner}
+          title={!isOwner ? 'Read-only demo — sign in as owner to edit' : undefined}
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-blue-600"
         >
           <Plus className="w-4 h-4" />
           New Field
@@ -212,13 +216,17 @@ export default function FieldsPage() {
                 <div className="flex gap-1">
                   <button
                     onClick={() => handleEdit(field)}
-                    className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                    disabled={!isOwner}
+                    title={!isOwner ? 'Read-only demo — sign in as owner to edit' : undefined}
+                    className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                   >
                     <Edit2 className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => handleDelete(field.id)}
-                    className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                    disabled={!isOwner}
+                    title={!isOwner ? 'Read-only demo — sign in as owner to edit' : undefined}
+                    className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>

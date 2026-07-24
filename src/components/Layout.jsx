@@ -1,9 +1,12 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Sun, Moon, Database, FileText, ClipboardList, BarChart3 } from 'lucide-react'
+import { Sun, Moon, Database, FileText, ClipboardList, BarChart3, LogOut, Eye } from 'lucide-react'
 import { useApp } from '../contexts/AppContext'
+import { useAuth } from '../contexts/AuthContext'
+import { authService } from '../services/supabase'
 
 export default function Layout({ children }) {
   const { darkMode, toggleDarkMode } = useApp()
+  const { isOwner } = useAuth()
   const location = useLocation()
 
   const isActive = (path) => location.pathname === path
@@ -28,17 +31,33 @@ export default function Layout({ children }) {
               </h1>
             </div>
 
-            <button
-              onClick={toggleDarkMode}
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-              aria-label="Toggle dark mode"
-            >
-              {darkMode ? (
-                <Sun className="w-5 h-5 text-yellow-500" />
-              ) : (
-                <Moon className="w-5 h-5 text-gray-600" />
+            <div className="flex items-center gap-2">
+              {!isOwner && (
+                <span className="hidden sm:inline-flex items-center gap-1 text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2.5 py-1 rounded-full">
+                  <Eye className="w-3.5 h-3.5" />
+                  Read-only
+                </span>
               )}
-            </button>
+              <button
+                onClick={toggleDarkMode}
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                aria-label="Toggle dark mode"
+              >
+                {darkMode ? (
+                  <Sun className="w-5 h-5 text-yellow-500" />
+                ) : (
+                  <Moon className="w-5 h-5 text-gray-600" />
+                )}
+              </button>
+              <button
+                onClick={() => authService.signOut()}
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-400"
+                aria-label="Sign out"
+                title="Sign out"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </div>
       </header>

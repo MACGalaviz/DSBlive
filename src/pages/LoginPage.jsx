@@ -2,6 +2,11 @@ import { useState } from 'react'
 import { authService } from '../services/supabase'
 import { LayoutDashboard, Lock, Mail, Loader2 } from 'lucide-react'
 
+// Public read-only demo account (shown on the login screen and in the README).
+// Create this user in Supabase > Authentication; it cannot edit data (RLS).
+const DEMO_EMAIL = 'demo@dsblive.app'
+const DEMO_PASSWORD = 'DemoDSB2026'
+
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -72,6 +77,19 @@ export default function LoginPage() {
             {isSubmitting ? <Loader2 className="animate-spin" /> : 'ACCEDER AL SISTEMA'}
           </button>
         </form>
+
+        <div className="mt-6 p-4 bg-blue-500/5 border border-blue-500/20 rounded-2xl text-center">
+          <p className="text-[10px] font-black uppercase text-blue-500 tracking-widest mb-2">Demo Access · Read-only</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">{DEMO_EMAIL}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 font-mono mb-3">{DEMO_PASSWORD}</p>
+          <button
+            type="button"
+            onClick={() => { setEmail(DEMO_EMAIL); setPassword(DEMO_PASSWORD) }}
+            className="text-xs font-bold text-primary hover:underline"
+          >
+            Fill demo credentials
+          </button>
+        </div>
       </div>
     </div>
   )

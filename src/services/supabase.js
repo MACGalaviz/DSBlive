@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 
 // Supabase Configuration - REPLACE WITH YOUR CREDENTIALS
-const supabaseUrl = 'https://xdlinzawgxscbczvxyix.supabase.co'
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhkbGluemF3Z3hzY2JjenZ4eWl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1ODQzNzksImV4cCI6MjA4NjE2MDM3OX0.vF7cXo7sdlYktpZ5m3gkWtkSxxje2akfhK1CucmIOkM'
+const supabaseUrl = 'https://jxgqnvzqwtindiskkeoo.supabase.co'
+const supabaseAnonKey = 'sb_publishable_oS8Hp4_IynTlPh2V0BnYlA_XYiynQyG'
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 

@@ -48,54 +48,68 @@ ALTER TABLE form_types ENABLE ROW LEVEL SECURITY;
 ALTER TABLE form_fields ENABLE ROW LEVEL SECURITY;
 ALTER TABLE records ENABLE ROW LEVEL SECURITY;
 
--- Public access policies (adjust according to your needs)
--- IMPORTANT: These policies allow public access. 
--- For production, consider adding authentication and more restrictive policies.
+-- Access model: PUBLIC read, OWNER-only write (public demo pattern).
+--   * SELECT  -> anyone can read (public demo)
+--   * INSERT / UPDATE / DELETE -> only the owner account can write
+--
+-- SETUP: replace 'OWNER_USER_ID' below with YOUR Supabase Auth user UID.
+--   Get it in: Authentication > Users > (your user) > User UID.
+--   Then re-run this policy section.
+-- NOTE: writes are gated at the DATABASE. Hiding buttons in the UI is not
+--   security; this RLS is what actually blocks non-owner writes.
+-- ALTERNATIVE (private instance, any logged-in user may write):
+--   replace  auth.uid() = 'c7f0c7bc-5103-4496-ae1c-6d05ccfa8582'::uuid  with  auth.uid() IS NOT NULL
 
-CREATE POLICY "Enable read access for all users" ON fields
+-- Make this script re-runnable and safe: drop ANY existing policy on these
+-- tables first, so no stray/permissive policy can survive next to the ones below.
+DO $$
+DECLARE pol record;
+BEGIN
+  FOR pol IN
+    SELECT policyname, tablename FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename IN ('fields', 'form_types', 'form_fields', 'records')
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', pol.policyname, pol.tablename);
+  END LOOP;
+END $$;
+
+-- fields
+CREATE POLICY "Public read" ON fields
     FOR SELECT USING (true);
+CREATE POLICY "Owner insert" ON fields
+    FOR INSERT WITH CHECK (auth.uid() = 'c7f0c7bc-5103-4496-ae1c-6d05ccfa8582'::uuid);
+CREATE POLICY "Owner update" ON fields
+    FOR UPDATE USING (auth.uid() = 'c7f0c7bc-5103-4496-ae1c-6d05ccfa8582'::uuid);
+CREATE POLICY "Owner delete" ON fields
+    FOR DELETE USING (auth.uid() = 'c7f0c7bc-5103-4496-ae1c-6d05ccfa8582'::uuid);
 
-CREATE POLICY "Enable insert access for all users" ON fields
-    FOR INSERT WITH CHECK (true);
-
-CREATE POLICY "Enable update access for all users" ON fields
-    FOR UPDATE USING (true);
-
-CREATE POLICY "Enable delete access for all users" ON fields
-    FOR DELETE USING (true);
-
-CREATE POLICY "Enable read access for all users" ON form_types
+-- form_types
+CREATE POLICY "Public read" ON form_types
     FOR SELECT USING (true);
+CREATE POLICY "Owner insert" ON form_types
+    FOR INSERT WITH CHECK (auth.uid() = 'c7f0c7bc-5103-4496-ae1c-6d05ccfa8582'::uuid);
+CREATE POLICY "Owner update" ON form_types
+    FOR UPDATE USING (auth.uid() = 'c7f0c7bc-5103-4496-ae1c-6d05ccfa8582'::uuid);
+CREATE POLICY "Owner delete" ON form_types
+    FOR DELETE USING (auth.uid() = 'c7f0c7bc-5103-4496-ae1c-6d05ccfa8582'::uuid);
 
-CREATE POLICY "Enable insert access for all users" ON form_types
-    FOR INSERT WITH CHECK (true);
-
-CREATE POLICY "Enable update access for all users" ON form_types
-    FOR UPDATE USING (true);
-
-CREATE POLICY "Enable delete access for all users" ON form_types
-    FOR DELETE USING (true);
-
-CREATE POLICY "Enable read access for all users" ON form_fields
+-- form_fields
+CREATE POLICY "Public read" ON form_fields
     FOR SELECT USING (true);
+CREATE POLICY "Owner insert" ON form_fields
+    FOR INSERT WITH CHECK (auth.uid() = 'c7f0c7bc-5103-4496-ae1c-6d05ccfa8582'::uuid);
+CREATE POLICY "Owner update" ON form_fields
+    FOR UPDATE USING (auth.uid() = 'c7f0c7bc-5103-4496-ae1c-6d05ccfa8582'::uuid);
+CREATE POLICY "Owner delete" ON form_fields
+    FOR DELETE USING (auth.uid() = 'c7f0c7bc-5103-4496-ae1c-6d05ccfa8582'::uuid);
 
-CREATE POLICY "Enable insert access for all users" ON form_fields
-    FOR INSERT WITH CHECK (true);
-
-CREATE POLICY "Enable update access for all users" ON form_fields
-    FOR UPDATE USING (true);
-
-CREATE POLICY "Enable delete access for all users" ON form_fields
-    FOR DELETE USING (true);
-
-CREATE POLICY "Enable read access for all users" ON records
+-- records
+CREATE POLICY "Public read" ON records
     FOR SELECT USING (true);
-
-CREATE POLICY "Enable insert access for all users" ON records
-    FOR INSERT WITH CHECK (true);
-
-CREATE POLICY "Enable update access for all users" ON records
-    FOR UPDATE USING (true);
-
-CREATE POLICY "Enable delete access for all users" ON records
-    FOR DELETE USING (true);
+CREATE POLICY "Owner insert" ON records
+    FOR INSERT WITH CHECK (auth.uid() = 'c7f0c7bc-5103-4496-ae1c-6d05ccfa8582'::uuid);
+CREATE POLICY "Owner update" ON records
+    FOR UPDATE USING (auth.uid() = 'c7f0c7bc-5103-4496-ae1c-6d05ccfa8582'::uuid);
+CREATE POLICY "Owner delete" ON records
+    FOR DELETE USING (auth.uid() = 'c7f0c7bc-5103-4496-ae1c-6d05ccfa8582'::uuid);
