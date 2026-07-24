@@ -35,7 +35,7 @@ export default function Layout({ children }) {
 
             <div className="flex items-center gap-2">
               {!isOwner && (
-                <span className="hidden sm:inline-flex items-center gap-1 text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2.5 py-1 rounded-full">
+                <span className="hidden sm:inline-flex items-center gap-1 text-xs font-medium text-red-500 bg-red-500/10 px-2.5 py-1 rounded-full">
                   <Eye className="w-3.5 h-3.5" />
                   Read-only
                 </span>
