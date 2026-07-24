@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AppProvider } from './contexts/AppContext'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import Layout from './components/Layout'
@@ -41,9 +41,9 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter basename="/DSBlive/">
+      <HashRouter>
         <AppContent />
-      </BrowserRouter>
+      </HashRouter>
     </AuthProvider>
   )
 }
