@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useApp } from '../contexts/AppContext'
 import { useAuth } from '../contexts/AuthContext'
 import { Plus, Edit2, Trash2, X, Save, Filter, Search, ChevronLeft, ChevronRight, Star, Copy } from 'lucide-react'
+import ConfirmModal from '../components/ConfirmModal'
 
 const PAGE_SIZE = 25
 
@@ -15,6 +16,7 @@ export default function RecordsPage({ favoritesOnly = false }) {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [formValues, setFormValues] = useState({})
+  const [confirmState, setConfirmState] = useState(null)
 
   // Reset to first page whenever the filters change.
   useEffect(() => { setPage(1) }, [filterFormType, search])
@@ -87,14 +89,56 @@ export default function RecordsPage({ favoritesOnly = false }) {
     }
   }
 
-  const handleDelete = async (id) => {
-    if (confirm('Are you sure you want to delete this record?')) {
-      try {
-        await deleteRecord(id)
-      } catch (error) {
-        alert('Error: ' + error.message)
-      }
+  const performDelete = async (id) => {
+    try {
+      await deleteRecord(id)
+    } catch (error) {
+      alert('Error: ' + error.message)
     }
+  }
+
+  // Adding a favorite is instant; removing one asks for confirmation.
+  const requestToggleFavorite = (record) => {
+    if (!record.is_favorite) {
+      handleToggleFavorite(record)
+      return
+    }
+    setConfirmState({
+      title: 'Remove from favorites',
+      message: 'This record will no longer appear in Favorites.',
+      confirmLabel: 'Remove',
+      variant: 'danger',
+      icon: Star,
+      action: () => handleToggleFavorite(record),
+    })
+  }
+
+  const requestDuplicate = (record) => {
+    setConfirmState({
+      title: 'Duplicate record',
+      message: 'A copy will be created with the current date.',
+      confirmLabel: 'Duplicate',
+      variant: 'success',
+      icon: Copy,
+      action: () => handleDuplicate(record),
+    })
+  }
+
+  const requestDelete = (id) => {
+    setConfirmState({
+      title: 'Delete record',
+      message: 'This record will be permanently deleted. This cannot be undone.',
+      confirmLabel: 'Delete',
+      variant: 'danger',
+      icon: Trash2,
+      action: () => performDelete(id),
+    })
+  }
+
+  const handleConfirm = async () => {
+    const action = confirmState?.action
+    setConfirmState(null)
+    if (action) await action()
   }
 
   const renderField = (field) => {
@@ -399,7 +443,7 @@ export default function RecordsPage({ favoritesOnly = false }) {
                   </div>
                   <div className="flex gap-1">
                     <button
-                      onClick={() => handleToggleFavorite(record)}
+                      onClick={() => requestToggleFavorite(record)}
                       disabled={!isOwner}
                       title={!isOwner ? 'Read-only demo — sign in as owner to edit' : record.is_favorite ? 'Remove from favorites' : 'Add to favorites'}
                       className={`p-1.5 rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent ${record.is_favorite ? 'text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
@@ -407,7 +451,7 @@ export default function RecordsPage({ favoritesOnly = false }) {
                       <Star className="w-4 h-4" fill={record.is_favorite ? 'currentColor' : 'none'} />
                     </button>
                     <button
-                      onClick={() => handleDuplicate(record)}
+                      onClick={() => requestDuplicate(record)}
                       disabled={!isOwner}
                       title={!isOwner ? 'Read-only demo — sign in as owner to edit' : 'Duplicate with current date'}
                       className="p-1.5 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
@@ -423,7 +467,7 @@ export default function RecordsPage({ favoritesOnly = false }) {
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => handleDelete(record.id)}
+                      onClick={() => requestDelete(record.id)}
                       disabled={!isOwner}
                       title={!isOwner ? 'Read-only demo — sign in as owner to edit' : undefined}
                       className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
@@ -479,6 +523,17 @@ export default function RecordsPage({ favoritesOnly = false }) {
           )}
         </div>
       )}
+
+      <ConfirmModal
+        open={!!confirmState}
+        title={confirmState?.title}
+        message={confirmState?.message}
+        confirmLabel={confirmState?.confirmLabel}
+        variant={confirmState?.variant}
+        icon={confirmState?.icon}
+        onConfirm={handleConfirm}
+        onCancel={() => setConfirmState(null)}
+      />
     </div>
   )
 }

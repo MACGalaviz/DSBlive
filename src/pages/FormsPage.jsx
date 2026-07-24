@@ -3,6 +3,7 @@ import { useApp } from '../contexts/AppContext'
 import { useAuth } from '../contexts/AuthContext'
 import { Plus, Edit2, Trash2, X, Save, GripVertical, BarChart3, Search } from 'lucide-react'
 import { availableCharts, countFieldTypes } from '../utils/charts'
+import ConfirmModal from '../components/ConfirmModal'
 
 export default function FormsPage() {
   const { fields, formTypes, createFormType, updateFormType, deleteFormType, loading } = useApp()
@@ -15,6 +16,7 @@ export default function FormsPage() {
   })
   const [selectedFields, setSelectedFields] = useState([])
   const [search, setSearch] = useState('')
+  const [confirmId, setConfirmId] = useState(null)
   // Enabled dashboard charts for this form. null => all applicable charts.
   const [chartConfig, setChartConfig] = useState(null)
 
@@ -100,13 +102,13 @@ export default function FormsPage() {
     }
   }
 
-  const handleDelete = async (id) => {
-    if (confirm('Are you sure you want to delete this form?')) {
-      try {
-        await deleteFormType(id)
-      } catch (error) {
-        alert('Error: ' + error.message)
-      }
+  const handleDelete = async () => {
+    const id = confirmId
+    setConfirmId(null)
+    try {
+      await deleteFormType(id)
+    } catch (error) {
+      alert('Error: ' + error.message)
     }
   }
 
@@ -382,7 +384,7 @@ export default function FormsPage() {
                     <Edit2 className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => handleDelete(form.id)}
+                    onClick={() => setConfirmId(form.id)}
                     disabled={!isOwner}
                     title={!isOwner ? 'Read-only demo — sign in as owner to edit' : undefined}
                     className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
@@ -413,6 +415,17 @@ export default function FormsPage() {
           ))}
         </div>
       )}
+
+      <ConfirmModal
+        open={confirmId !== null}
+        title="Delete form"
+        message="This form and its field associations will be permanently deleted."
+        confirmLabel="Delete"
+        variant="danger"
+        icon={Trash2}
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmId(null)}
+      />
     </div>
   )
 }

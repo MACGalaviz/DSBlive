@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useApp } from '../contexts/AppContext'
 import { useAuth } from '../contexts/AuthContext'
 import { Plus, Edit2, Trash2, X, Save, Search } from 'lucide-react'
+import ConfirmModal from '../components/ConfirmModal'
 
 const DATA_TYPES = [
   { value: 'text', label: 'Text' },
@@ -18,6 +19,7 @@ export default function FieldsPage() {
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [search, setSearch] = useState('')
+  const [confirmId, setConfirmId] = useState(null)
   const [formData, setFormData] = useState({
     name: '',
     data_type: 'text',
@@ -72,13 +74,13 @@ export default function FieldsPage() {
     }
   }
 
-  const handleDelete = async (id) => {
-    if (confirm('Are you sure you want to delete this field?')) {
-      try {
-        await deleteField(id)
-      } catch (error) {
-        alert('Error: ' + error.message)
-      }
+  const handleDelete = async () => {
+    const id = confirmId
+    setConfirmId(null)
+    try {
+      await deleteField(id)
+    } catch (error) {
+      alert('Error: ' + error.message)
     }
   }
 
@@ -253,7 +255,7 @@ export default function FieldsPage() {
                     <Edit2 className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => handleDelete(field.id)}
+                    onClick={() => setConfirmId(field.id)}
                     disabled={!isOwner}
                     title={!isOwner ? 'Read-only demo — sign in as owner to edit' : undefined}
                     className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
@@ -266,6 +268,17 @@ export default function FieldsPage() {
           ))}
         </div>
       )}
+
+      <ConfirmModal
+        open={confirmId !== null}
+        title="Delete field"
+        message="This field will be permanently deleted. Forms using it may be affected."
+        confirmLabel="Delete"
+        variant="danger"
+        icon={Trash2}
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmId(null)}
+      />
     </div>
   )
 }
