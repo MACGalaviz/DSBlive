@@ -79,6 +79,7 @@ const FORMS = [
     name: 'Retail Sales',
     description: 'Point-of-sale transactions across store departments',
     records: 320,
+    charts: ['summaries', 'avgByGroup', 'distribution', 'stacked', 'activity', 'weekday', 'topValues'],
     fields: [
       { name: 'product', type: 'text', gen: () => pick(['Wireless Mouse', 'USB-C Cable', 'Notebook', 'Water Bottle', 'Desk Lamp', 'Backpack', 'Headphones', 'Coffee Mug', 'Phone Case', 'Power Bank']) },
       { name: 'unit_price', type: 'number', gen: () => randFloat(5, 400) },
@@ -93,6 +94,7 @@ const FORMS = [
     name: 'Gym Check-ins',
     description: 'Member facility access and session tracking',
     records: 400,
+    charts: ['summaries', 'avgByGroup', 'distribution', 'activity', 'weekday', 'booleanRatio'],
     fields: [
       { name: 'member', type: 'text', gen: () => person() },
       { name: 'age', type: 'number', gen: () => randInt(16, 68) },
@@ -107,6 +109,7 @@ const FORMS = [
     name: 'Restaurant Orders',
     description: 'Kitchen tickets with service type and rating',
     records: 300,
+    charts: ['summaries', 'avgByGroup', 'distribution', 'stacked', 'activity', 'weekday', 'topValues'],
     fields: [
       { name: 'dish', type: 'text', gen: () => pick(['Margherita Pizza', 'Caesar Salad', 'Ramen Bowl', 'Beef Burger', 'Sushi Set', 'Pad Thai', 'Tacos', 'Risotto', 'Falafel Wrap', 'Pancakes']) },
       { name: 'price', type: 'number', gen: () => randFloat(80, 420) },
@@ -121,6 +124,7 @@ const FORMS = [
     name: 'Clinic Visits',
     description: 'Outpatient appointments and wait times',
     records: 260,
+    charts: ['summaries', 'avgByGroup', 'distribution', 'activity', 'booleanRatio'],
     fields: [
       { name: 'patient', type: 'text', gen: () => person() },
       { name: 'age', type: 'number', gen: () => randInt(1, 92) },
@@ -135,6 +139,7 @@ const FORMS = [
     name: 'Fleet Fuel Logs',
     description: 'Vehicle refueling and odometer records',
     records: 280,
+    charts: ['summaries', 'avgByGroup', 'scatter', 'distribution', 'activity', 'booleanRatio'],
     fields: [
       { name: 'vehicle', type: 'text', gen: () => `${pick(['Van', 'Truck', 'Sedan', 'Pickup'])}-${randInt(100, 999)}` },
       { name: 'liters', type: 'number', gen: () => randFloat(15, 90) },
@@ -149,6 +154,7 @@ const FORMS = [
     name: 'Real Estate Listings',
     description: 'Property inventory with pricing and status',
     records: 180,
+    charts: ['summaries', 'avgByGroup', 'scatter', 'distribution', 'activity', 'topValues'],
     fields: [
       { name: 'address', type: 'text', gen: () => `${randInt(1, 300)} ${pick(['Oak', 'Maple', 'Pine', 'Cedar', 'Elm'])} St` },
       { name: 'price', type: 'number', gen: () => randInt(80000, 950000) },
@@ -163,6 +169,7 @@ const FORMS = [
     name: 'Event Tickets',
     description: 'Ticket sales by tier and sales channel',
     records: 340,
+    charts: ['summaries', 'avgByGroup', 'distribution', 'stacked', 'activity', 'booleanRatio'],
     fields: [
       { name: 'event', type: 'text', gen: () => pick(['Jazz Night', 'Tech Summit', 'Food Festival', 'Marathon', 'Art Expo', 'Comedy Show', 'Film Premiere']) },
       { name: 'price', type: 'number', gen: () => randFloat(150, 3500) },
@@ -177,6 +184,7 @@ const FORMS = [
     name: 'Support Tickets',
     description: 'Customer support cases and resolution metrics',
     records: 360,
+    charts: ['summaries', 'avgByGroup', 'distribution', 'activity', 'weekday', 'booleanRatio'],
     fields: [
       { name: 'subject', type: 'text', gen: () => pick(['Login issue', 'Billing question', 'Feature request', 'Bug report', 'Refund request', 'Account access', 'Performance']) },
       { name: 'priority', type: 'selector', options: ['Low', 'Medium', 'High', 'Urgent'], gen: (o) => pick(o) },
@@ -191,6 +199,7 @@ const FORMS = [
     name: 'Library Loans',
     description: 'Book lending activity and returns',
     records: 240,
+    charts: ['summaries', 'avgByGroup', 'distribution', 'activity', 'booleanRatio', 'topValues'],
     fields: [
       { name: 'book', type: 'text', gen: () => pick(['Dune', '1984', 'Sapiens', 'The Hobbit', 'Clean Code', 'Hyperion', 'Neuromancer', 'The Odyssey']) },
       { name: 'member', type: 'text', gen: () => person() },
@@ -204,6 +213,7 @@ const FORMS = [
     name: 'Weather Readings',
     description: 'Environmental sensor measurements by station',
     records: 420,
+    charts: ['summaries', 'avgByGroup', 'scatter', 'distribution', 'activity', 'trend'],
     fields: [
       { name: 'station', type: 'text', gen: () => `Station-${pick(['North', 'South', 'East', 'West', 'Central'])}` },
       { name: 'temperature', type: 'number', gen: () => randFloat(-5, 42, 1) },
@@ -282,10 +292,10 @@ lines.push('')
 
 // form_types
 lines.push('-- Form types')
-lines.push('INSERT INTO form_types (name, description) VALUES')
+lines.push('INSERT INTO form_types (name, description, chart_config) VALUES')
 lines.push(
   FORMS
-    .map((f) => `  ('${esc(f.name)}', '${esc(f.description)}')`)
+    .map((f) => `  ('${esc(f.name)}', '${esc(f.description)}', ${f.charts ? `'${esc(JSON.stringify(f.charts))}'` : 'NULL'})`)
     .join(',\n') + ';'
 )
 lines.push('')
