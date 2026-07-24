@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { authService } from '../services/supabase'
-import { LayoutDashboard, Lock, Mail, Loader2 } from 'lucide-react'
+import { LayoutDashboard, Lock, Mail, Loader2, Sun, Moon } from 'lucide-react'
 
 // Public read-only demo account (shown on the login screen and in the README).
 // Create this user in Supabase > Authentication; it cannot edit data (RLS).
@@ -12,6 +12,16 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState(null)
+  // Local theme toggle: writes the same key/class AppContext uses, so the
+  // choice carries over once logged in.
+  const [darkMode, setDarkMode] = useState(() => JSON.parse(localStorage.getItem('darkMode') || 'false'))
+
+  const toggleTheme = () => {
+    const next = !darkMode
+    setDarkMode(next)
+    localStorage.setItem('darkMode', JSON.stringify(next))
+    document.documentElement.classList.toggle('dark', next)
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -28,6 +38,13 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 p-6">
+      <button
+        onClick={toggleTheme}
+        className="fixed top-5 right-5 p-2.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        aria-label="Toggle dark mode"
+      >
+        {darkMode ? <Sun className="w-5 h-5 text-yellow-500" /> : <Moon className="w-5 h-5 text-gray-600" />}
+      </button>
       <div className="max-w-md w-full bg-white dark:bg-gray-900 rounded-3xl shadow-2xl p-10 border border-gray-100 dark:border-gray-800">
         <div className="flex flex-col items-center mb-10 text-center">
           <div className="p-4 bg-primary/10 rounded-2xl mb-4 text-primary">
