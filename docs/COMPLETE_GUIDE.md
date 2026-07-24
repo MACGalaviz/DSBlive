@@ -23,8 +23,8 @@ dsblive/
 │   └── index.css           # Tailwind styles
 ├── package.json            # Dependencies
 ├── vite.config.js          # Vite configuration
-├── supabase-setup.sql      # Script to create tables
-├── supabase-example-data.sql  # Example data
+├── db/supabase-setup.sql      # Script to create tables
+├── db/supabase-example-data.sql  # Example data
 └── README.md               # Full documentation
 ```
 
@@ -95,7 +95,7 @@ And the data is saved as:
 #### 1.2 Run SQL
 1. In your project, side menu: **SQL Editor**
 2. Click "New query"
-3. Open `supabase-setup.sql` in your editor
+3. Open `db/supabase-setup.sql` in your editor
 4. Copy ALL the content
 5. Paste it into the Supabase editor
 6. Click "Run" (bottom right corner)
@@ -111,7 +111,7 @@ And the data is saved as:
 
 #### 1.4 (Optional) Load Example Data
 1. In SQL Editor, new query
-2. Open `supabase-example-data.sql`
+2. Open `db/supabase-example-data.sql`
 3. Copy and paste the content
 4. Click "Run"
 
@@ -366,7 +366,7 @@ And in `src/components/Layout.jsx`, line 28:
 **Cause**: Tables not created in Supabase  
 **Solution**:
 1. Go to Supabase SQL Editor
-2. Run `supabase-setup.sql` again
+2. Run `db/supabase-setup.sql` again
 3. Check in Table Editor that the tables exist
 
 ### Blank application after deploying
@@ -411,7 +411,7 @@ And in `src/components/Layout.jsx`, line 28:
 ## 🔒 Security Model
 
 This app ships as a **public read-only showcase**: anyone can read; only the
-**owner account** can write. It is already wired — `supabase-setup.sql` creates
+**owner account** can write. It is already wired — `db/supabase-setup.sql` creates
 these policies for every table:
 
 ```sql

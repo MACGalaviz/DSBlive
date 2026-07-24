@@ -9,9 +9,9 @@
 3. Go to **Authentication** > **Users** > **Add user** and create your
    **owner** account (your email) and a read-only **demo** account. Copy the
    owner's **User UID**.
-4. In `supabase-setup.sql`, replace `OWNER_USER_ID` with that UID.
-5. Go to **SQL Editor** and run `supabase-setup.sql`, then (optional)
-   `supabase-example-data.sql` for demo data.
+4. In `db/supabase-setup.sql`, replace `OWNER_USER_ID` with that UID.
+5. Go to **SQL Editor** and run `db/supabase-setup.sql`, then (optional)
+   `db/supabase-example-data.sql` for demo data.
 6. In **Authentication** > **Providers**, disable new sign-ups.
 7. Go to **Settings** > **API** and copy the Project URL + anon/publishable key.
 
@@ -25,7 +25,7 @@ const supabaseAnonKey = 'sb_publishable_...'
 ```
 
 2. Open `src/contexts/AuthContext.jsx` and set `OWNER_UID` to your owner UID
-   (the same one used in `supabase-setup.sql`), so only you see the edit controls.
+   (the same one used in `db/supabase-setup.sql`), so only you see the edit controls.
 
 ### 3. Install and Run (2 minutes)
 

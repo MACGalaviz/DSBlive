@@ -9,7 +9,9 @@
 //   node scripts/generate-seed.js --multiplier 3       # 3x more records
 //   node scripts/generate-seed.js --months 18          # spread over 18 months
 //   node scripts/generate-seed.js --seed 42            # reproducible output
-//   node scripts/generate-seed.js --out my-seed.sql    # custom output path
+//   node scripts/generate-seed.js --out db/my-seed.sql # custom output path
+//
+// Default output: db/supabase-seed-generated.sql
 //
 // The output starts with TRUNCATE ... RESTART IDENTITY CASCADE. This WIPES the
 // whole database on every run so that BIGSERIAL ids are deterministic (field N =
@@ -31,7 +33,7 @@ const getArg = (name, fallback) => {
 
 const MULTIPLIER = parseFloat(getArg('multiplier', '1'))
 const MONTHS = parseInt(getArg('months', '12'), 10)
-const OUT = getArg('out', 'supabase-seed-generated.sql')
+const OUT = getArg('out', 'db/supabase-seed-generated.sql')
 const SEED = parseInt(getArg('seed', '20260723'), 10)
 
 // ---------------------------------------------------------------------------
