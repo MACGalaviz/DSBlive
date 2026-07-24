@@ -7,7 +7,7 @@ import { isChartEnabled } from '../utils/charts'
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899']
 
 export default function DashboardPage() {
-  const { fields, formTypes, records, loading } = useApp()
+  const { fields, formTypes, records, loading, darkMode } = useApp()
   const [selectedFormType, setSelectedFormType] = useState('all')
   const [groupByField, setGroupByField] = useState('')
 
@@ -253,6 +253,17 @@ export default function DashboardPage() {
   // Enabled charts for the selected form (null => all applicable).
   const chartConfig = formTypes.find(f => f.id.toString() === selectedFormType.toString())?.chart_config
 
+  // Theme-aware tooltip styling (recharts inlines these; not driven by CSS classes).
+  const tooltipStyle = {
+    backgroundColor: darkMode ? '#1f2937' : '#ffffff',
+    border: darkMode ? '1px solid #374151' : '1px solid #e5e7eb',
+    borderRadius: '12px',
+    boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
+    color: darkMode ? '#f9fafb' : '#111827',
+  }
+  const tooltipItemStyle = { color: darkMode ? '#f9fafb' : '#111827' }
+  const tooltipLabelStyle = { color: darkMode ? '#9ca3af' : '#6b7280', fontWeight: 700 }
+
   if (loading) return <div className="flex justify-center items-center h-96 text-primary font-bold animate-pulse">Loading Analytics...</div>
 
   return (
@@ -361,7 +372,7 @@ export default function DashboardPage() {
                   <YAxis stroke="#9ca3af" fontSize={12} tickLine={false} axisLine={false} />
                   <Tooltip 
                     cursor={{fill: 'rgba(59, 130, 246, 0.05)'}}
-                    contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: '#fff' }} 
+                    contentStyle={tooltipStyle} itemStyle={tooltipItemStyle} labelStyle={tooltipLabelStyle} 
                   />
                   <Legend iconType="circle" />
                   <Bar dataKey="count" name="Records" fill="#3b82f6" radius={[6, 6, 0, 0]} />
@@ -398,7 +409,7 @@ export default function DashboardPage() {
                             <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />
                           ))}
                         </Pie>
-                        <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px' }} />
+                        <Tooltip contentStyle={tooltipStyle} itemStyle={tooltipItemStyle} labelStyle={tooltipLabelStyle} />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
@@ -433,7 +444,7 @@ export default function DashboardPage() {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#374151" opacity={0.1} />
                   <XAxis dataKey="month" stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} />
                   <YAxis stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
-                  <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: '#fff' }} />
+                  <Tooltip contentStyle={tooltipStyle} itemStyle={tooltipItemStyle} labelStyle={tooltipLabelStyle} />
                   <Area type="monotone" dataKey="count" name="Records" stroke="#3b82f6" strokeWidth={3} fill="url(#formActivity)" />
                 </AreaChart>
               </ResponsiveContainer>
@@ -452,7 +463,7 @@ export default function DashboardPage() {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#374151" opacity={0.1} />
                   <XAxis dataKey="month" stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} />
                   <YAxis stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} />
-                  <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: '#fff' }} />
+                  <Tooltip contentStyle={tooltipStyle} itemStyle={tooltipItemStyle} labelStyle={tooltipLabelStyle} />
                   <Legend iconType="circle" />
                   {numericTrend.numericFields.map((nf, i) => (
                     <Line key={nf.id} type="monotone" dataKey={nf.name} name={nf.name} stroke={COLORS[i % COLORS.length]} strokeWidth={2.5} dot={false} />
@@ -474,7 +485,7 @@ export default function DashboardPage() {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#374151" opacity={0.1} />
                   <XAxis dataKey="name" stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} />
                   <YAxis stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} />
-                  <Tooltip cursor={{ fill: 'rgba(245,158,11,0.05)' }} contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: '#fff' }} />
+                  <Tooltip cursor={{ fill: 'rgba(245,158,11,0.05)' }} contentStyle={tooltipStyle} itemStyle={tooltipItemStyle} labelStyle={tooltipLabelStyle} />
                   <Bar dataKey="average" name={`Avg ${avgByGroup.numName}`} fill="#f59e0b" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -498,7 +509,7 @@ export default function DashboardPage() {
                           <Cell fill="#10b981" />
                           <Cell fill="#ef4444" />
                         </Pie>
-                        <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: '#fff' }} />
+                        <Tooltip contentStyle={tooltipStyle} itemStyle={tooltipItemStyle} labelStyle={tooltipLabelStyle} />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
@@ -526,7 +537,7 @@ export default function DashboardPage() {
                 <BarChart layout="vertical" data={topValues.data}>
                   <XAxis type="number" stroke="#9ca3af" fontSize={11} axisLine={false} tickLine={false} allowDecimals={false} />
                   <YAxis type="category" dataKey="name" stroke="#9ca3af" fontSize={11} axisLine={false} tickLine={false} width={130} />
-                  <Tooltip cursor={{ fill: 'rgba(59,130,246,0.05)' }} contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: '#fff' }} />
+                  <Tooltip cursor={{ fill: 'rgba(59,130,246,0.05)' }} contentStyle={tooltipStyle} itemStyle={tooltipItemStyle} labelStyle={tooltipLabelStyle} />
                   <Bar dataKey="count" fill="#3b82f6" radius={[0, 8, 8, 0]} barSize={18} />
                 </BarChart>
               </ResponsiveContainer>
@@ -545,7 +556,7 @@ export default function DashboardPage() {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#374151" opacity={0.1} />
                   <XAxis dataKey="month" stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} />
                   <YAxis stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
-                  <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: '#fff' }} />
+                  <Tooltip contentStyle={tooltipStyle} itemStyle={tooltipItemStyle} labelStyle={tooltipLabelStyle} />
                   <Legend iconType="circle" />
                   {stackedTrend.series.map((s, i) => (
                     <Bar key={s} dataKey={s} name={s} stackId="a" fill={COLORS[i % COLORS.length]} />
@@ -568,7 +579,7 @@ export default function DashboardPage() {
                   <XAxis type="number" dataKey="x" name={scatterData.xName} stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} />
                   <YAxis type="number" dataKey="y" name={scatterData.yName} stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} />
                   <ZAxis range={[40, 40]} />
-                  <Tooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: '#fff' }} />
+                  <Tooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={tooltipStyle} itemStyle={tooltipItemStyle} labelStyle={tooltipLabelStyle} />
                   <Scatter data={scatterData.data} fill="#ec4899" fillOpacity={0.5} />
                 </ScatterChart>
               </ResponsiveContainer>
@@ -587,7 +598,7 @@ export default function DashboardPage() {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#374151" opacity={0.1} />
                   <XAxis dataKey="name" stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} />
                   <YAxis stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
-                  <Tooltip cursor={{ fill: 'rgba(59,130,246,0.05)' }} contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: '#fff' }} />
+                  <Tooltip cursor={{ fill: 'rgba(59,130,246,0.05)' }} contentStyle={tooltipStyle} itemStyle={tooltipItemStyle} labelStyle={tooltipLabelStyle} />
                   <Bar dataKey="count" name="Records" fill="#8b5cf6" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -605,7 +616,7 @@ export default function DashboardPage() {
                     <BarChart layout="vertical" data={formTypes.map(f => ({ name: f.name, count: records.filter(r => r.form_type_id === f.id).length })).sort((a, b) => b.count - a.count)}>
                       <XAxis type="number" stroke="#9ca3af" fontSize={10} axisLine={false} tickLine={false} allowDecimals={false} />
                       <YAxis type="category" dataKey="name" stroke="#9ca3af" fontSize={10} axisLine={false} tickLine={false} width={110} />
-                      <Tooltip cursor={{fill: 'rgba(16,185,129,0.05)'}} contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px' }} />
+                      <Tooltip cursor={{fill: 'rgba(16,185,129,0.05)'}} contentStyle={tooltipStyle} itemStyle={tooltipItemStyle} labelStyle={tooltipLabelStyle} />
                       <Bar dataKey="count" fill="#10b981" radius={[0, 8, 8, 0]} barSize={18} />
                     </BarChart>
                   </ResponsiveContainer>
@@ -619,7 +630,7 @@ export default function DashboardPage() {
                       <Pie data={recordsShare} innerRadius={55} outerRadius={95} paddingAngle={3} dataKey="value" nameKey="name" stroke="none">
                         {recordsShare.map((entry, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                       </Pie>
-                      <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: '#fff' }} />
+                      <Tooltip contentStyle={tooltipStyle} itemStyle={tooltipItemStyle} labelStyle={tooltipLabelStyle} />
                       <Legend iconType="circle" layout="vertical" align="right" verticalAlign="middle" wrapperStyle={{ fontSize: '11px' }} />
                     </PieChart>
                   </ResponsiveContainer>
@@ -643,7 +654,7 @@ export default function DashboardPage() {
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#374151" opacity={0.1} />
                     <XAxis dataKey="month" stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} />
                     <YAxis stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
-                    <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: '#fff' }} />
+                    <Tooltip contentStyle={tooltipStyle} itemStyle={tooltipItemStyle} labelStyle={tooltipLabelStyle} />
                     <Area type="monotone" dataKey="count" name="Records" stroke="#3b82f6" strokeWidth={3} fill="url(#globalActivity)" />
                   </AreaChart>
                 </ResponsiveContainer>
