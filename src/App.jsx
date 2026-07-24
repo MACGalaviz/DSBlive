@@ -6,6 +6,7 @@ import DashboardPage from './pages/DashboardPage'
 import FieldsPage from './pages/FieldsPage'
 import FormsPage from './pages/FormsPage'
 import RecordsPage from './pages/RecordsPage'
+import ChartsPage from './pages/ChartsPage'
 import LoginPage from './pages/LoginPage'
 
 function AppContent() {
@@ -31,6 +32,7 @@ function AppContent() {
           <Route path="/fields" element={<FieldsPage />} />
           <Route path="/forms" element={<FormsPage />} />
           <Route path="/records" element={<RecordsPage />} />
+          <Route path="/charts" element={<ChartsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>

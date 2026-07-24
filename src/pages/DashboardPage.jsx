@@ -250,6 +250,13 @@ export default function DashboardPage() {
     return counts
   }, [filteredRecords, selectedFormType])
 
+  // Running total of records over months (cumulative).
+  const cumulativeSeries = useMemo(() => {
+    if (!timeSeries.length) return []
+    let acc = 0
+    return timeSeries.map(d => { acc += d.count; return { month: d.month, total: acc } })
+  }, [timeSeries])
+
   // Enabled charts for the selected form (null => all applicable).
   const chartConfig = formTypes.find(f => f.id.toString() === selectedFormType.toString())?.chart_config
 
@@ -601,6 +608,31 @@ export default function DashboardPage() {
                   <Tooltip cursor={{ fill: 'rgba(59,130,246,0.05)' }} contentStyle={tooltipStyle} itemStyle={tooltipItemStyle} labelStyle={tooltipLabelStyle} />
                   <Bar dataKey="count" name="Records" fill="#8b5cf6" radius={[6, 6, 0, 0]} />
                 </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+
+        {selectedFormType !== 'all' && cumulativeSeries.length > 0 && isChartEnabled(chartConfig, 'cumulative') && (
+          <div className="pt-10 border-t border-gray-100 dark:border-gray-700 animate-in fade-in duration-500 space-y-4">
+            <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+              <TrendingUp size={18} className="text-green-500" /> Cumulative Growth
+            </h3>
+            <div className="h-[300px] bg-gray-50 dark:bg-gray-900/20 p-4 rounded-2xl border border-gray-100 dark:border-gray-800">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={cumulativeSeries}>
+                  <defs>
+                    <linearGradient id="cumulativeGrowth" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#374151" opacity={0.1} />
+                  <XAxis dataKey="month" stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
+                  <Tooltip contentStyle={tooltipStyle} itemStyle={tooltipItemStyle} labelStyle={tooltipLabelStyle} />
+                  <Area type="monotone" dataKey="total" name="Total records" stroke="#10b981" strokeWidth={3} fill="url(#cumulativeGrowth)" />
+                </AreaChart>
               </ResponsiveContainer>
             </div>
           </div>

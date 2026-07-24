@@ -18,6 +18,7 @@ export const CHART_CATALOG = [
   { key: 'stacked', label: 'Stacked Over Time', description: 'Category breakdown per month (stacked bars)', applies: (t) => t.selector > 0 },
   { key: 'scatter', label: 'Correlation', description: 'Scatter plot between two numeric fields', applies: (t) => t.number >= 2 },
   { key: 'weekday', label: 'Weekday Activity', description: 'Records by day of the week', applies: () => true },
+  { key: 'cumulative', label: 'Cumulative Growth', description: 'Running total of records over time', applies: () => true },
 ]
 
 // Count field types from an array of { data_type } (accepts raw fields or the
