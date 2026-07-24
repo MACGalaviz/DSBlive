@@ -12,6 +12,12 @@ export const CHART_CATALOG = [
   { key: 'distribution', label: 'Value Distribution', description: 'Donut chart per selector field', applies: (t) => t.selector > 0 },
   { key: 'activity', label: 'Activity Over Time', description: 'Records submitted per month', applies: () => true },
   { key: 'trend', label: 'Numeric Trends', description: 'Monthly total of each numeric field', applies: (t) => t.number > 0 },
+  { key: 'avgByGroup', label: 'Average by Group', description: 'Average of a numeric field per category (not summed)', applies: (t) => t.number > 0 && (t.selector > 0 || t.boolean > 0) },
+  { key: 'booleanRatio', label: 'Yes / No Ratio', description: 'Donut of true vs false per boolean field', applies: (t) => t.boolean > 0 },
+  { key: 'topValues', label: 'Top Values', description: 'Most frequent values of a text field', applies: (t) => t.text > 0 },
+  { key: 'stacked', label: 'Stacked Over Time', description: 'Category breakdown per month (stacked bars)', applies: (t) => t.selector > 0 },
+  { key: 'scatter', label: 'Correlation', description: 'Scatter plot between two numeric fields', applies: (t) => t.number >= 2 },
+  { key: 'weekday', label: 'Weekday Activity', description: 'Records by day of the week', applies: () => true },
 ]
 
 // Count field types from an array of { data_type } (accepts raw fields or the

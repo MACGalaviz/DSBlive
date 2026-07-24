@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useApp } from '../contexts/AppContext'
-import { BarChart, Bar, LineChart, Line, AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { BarChart, Bar, LineChart, Line, AreaChart, Area, PieChart, Pie, Cell, ScatterChart, Scatter, ZAxis, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { TrendingUp, Database, FileText, ClipboardList, Layers, LayoutDashboard, PieChart as PieIcon, Activity, CalendarClock } from 'lucide-react'
 import { isChartEnabled } from '../utils/charts'
 
@@ -148,6 +148,107 @@ export default function DashboardPage() {
       numericFields
     }
   }, [selectedFormType, filteredRecords, formTypes])
+
+  // Fields of the selected form (empty on the global view).
+  const formFieldList = useMemo(() => {
+    if (selectedFormType === 'all') return []
+    const form = formTypes.find(f => f.id.toString() === selectedFormType.toString())
+    return form?.form_fields?.map(ff => ff.fields) || []
+  }, [selectedFormType, formTypes])
+
+  // Average of the first numeric field per category (answers "sum of ages" issue).
+  const avgByGroup = useMemo(() => {
+    if (!filteredRecords.length || !formFieldList.length) return null
+    const cat = formFieldList.find(f => f.data_type === 'selector' || f.data_type === 'boolean')
+    const num = formFieldList.find(f => f.data_type === 'number')
+    if (!cat || !num) return null
+    const groups = {}
+    filteredRecords.forEach(r => {
+      const g = r.data[cat.id] || 'N/A'
+      const v = parseFloat(r.data[num.id])
+      if (isNaN(v)) return
+      if (!groups[g]) groups[g] = { name: g, sum: 0, n: 0 }
+      groups[g].sum += v
+      groups[g].n += 1
+    })
+    const data = Object.values(groups).map(g => ({ name: g.name, average: +(g.sum / g.n).toFixed(2) }))
+    return data.length ? { catName: cat.name, numName: num.name, data } : null
+  }, [filteredRecords, formFieldList])
+
+  // True/false ratio per boolean field.
+  const booleanStats = useMemo(() => {
+    if (!filteredRecords.length || !formFieldList.length) return null
+    const booleans = formFieldList.filter(f => f.data_type === 'boolean')
+    const stats = booleans.map(field => {
+      let yes = 0, no = 0
+      filteredRecords.forEach(r => {
+        const v = r.data[field.id]
+        if (v === 'true') yes++
+        else if (v === 'false') no++
+      })
+      return { name: field.name, data: [{ name: 'Yes', value: yes }, { name: 'No', value: no }] }
+    }).filter(s => s.data.some(d => d.value > 0))
+    return stats.length ? stats : null
+  }, [filteredRecords, formFieldList])
+
+  // Most frequent values of the first text field (top 8).
+  const topValues = useMemo(() => {
+    if (!filteredRecords.length || !formFieldList.length) return null
+    const textField = formFieldList.find(f => f.data_type === 'text')
+    if (!textField) return null
+    const counts = {}
+    filteredRecords.forEach(r => {
+      const v = r.data[textField.id]
+      if (v) counts[v] = (counts[v] || 0) + 1
+    })
+    const data = Object.entries(counts)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 8)
+    return data.length ? { fieldName: textField.name, data } : null
+  }, [filteredRecords, formFieldList])
+
+  // First selector's category breakdown per month (stacked bars).
+  const stackedTrend = useMemo(() => {
+    if (!filteredRecords.length || !formFieldList.length) return null
+    const selector = formFieldList.find(f => f.data_type === 'selector')
+    if (!selector) return null
+    const byMonth = {}
+    const seriesSet = new Set()
+    filteredRecords.forEach(r => {
+      const m = new Date(r.created_at).toISOString().slice(0, 7)
+      const val = r.data[selector.id]
+      if (!byMonth[m]) byMonth[m] = { month: m }
+      if (val) {
+        byMonth[m][val] = (byMonth[m][val] || 0) + 1
+        seriesSet.add(val)
+      }
+    })
+    const data = Object.values(byMonth).sort((a, b) => a.month.localeCompare(b.month))
+    return { fieldName: selector.name, data, series: [...seriesSet] }
+  }, [filteredRecords, formFieldList])
+
+  // Scatter between the first two numeric fields.
+  const scatterData = useMemo(() => {
+    if (!filteredRecords.length || !formFieldList.length) return null
+    const nums = formFieldList.filter(f => f.data_type === 'number')
+    if (nums.length < 2) return null
+    const [x, y] = nums
+    const data = filteredRecords
+      .map(r => ({ x: parseFloat(r.data[x.id]), y: parseFloat(r.data[y.id]) }))
+      .filter(p => !isNaN(p.x) && !isNaN(p.y))
+      .slice(0, 400)
+    return data.length ? { xName: x.name, yName: y.name, data } : null
+  }, [filteredRecords, formFieldList])
+
+  // Records by day of the week (from created_at).
+  const weekdayStats = useMemo(() => {
+    if (!filteredRecords.length || selectedFormType === 'all') return null
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    const counts = days.map(name => ({ name, count: 0 }))
+    filteredRecords.forEach(r => { counts[new Date(r.created_at).getDay()].count++ })
+    return counts
+  }, [filteredRecords, selectedFormType])
 
   // Enabled charts for the selected form (null => all applicable).
   const chartConfig = formTypes.find(f => f.id.toString() === selectedFormType.toString())?.chart_config
@@ -357,6 +458,138 @@ export default function DashboardPage() {
                     <Line key={nf.id} type="monotone" dataKey={nf.name} name={nf.name} stroke={COLORS[i % COLORS.length]} strokeWidth={2.5} dot={false} />
                   ))}
                 </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+
+        {selectedFormType !== 'all' && avgByGroup && isChartEnabled(chartConfig, 'avgByGroup') && (
+          <div className="pt-10 border-t border-gray-100 dark:border-gray-700 animate-in fade-in duration-500 space-y-4">
+            <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+              <Activity size={18} className="text-orange-500" /> Average {avgByGroup.numName} by {avgByGroup.catName}
+            </h3>
+            <div className="h-[320px] bg-gray-50 dark:bg-gray-900/20 p-4 rounded-2xl border border-gray-100 dark:border-gray-800">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={avgByGroup.data}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#374151" opacity={0.1} />
+                  <XAxis dataKey="name" stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} />
+                  <Tooltip cursor={{ fill: 'rgba(245,158,11,0.05)' }} contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: '#fff' }} />
+                  <Bar dataKey="average" name={`Avg ${avgByGroup.numName}`} fill="#f59e0b" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+
+        {selectedFormType !== 'all' && booleanStats && isChartEnabled(chartConfig, 'booleanRatio') && (
+          <div className="pt-10 border-t border-gray-100 dark:border-gray-700 animate-in fade-in duration-500 space-y-4">
+            <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+              <PieIcon size={18} className="text-green-500" /> Yes / No Ratio
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {booleanStats.map((stat, index) => (
+                <div key={index} className="bg-gray-50 dark:bg-gray-900/20 p-6 rounded-2xl border border-gray-100 dark:border-gray-800">
+                  <p className="text-center font-black text-xs mb-6 uppercase text-gray-500">{stat.name}</p>
+                  <div className="h-[200px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={stat.data} innerRadius={55} outerRadius={80} paddingAngle={6} dataKey="value" stroke="none">
+                          <Cell fill="#10b981" />
+                          <Cell fill="#ef4444" />
+                        </Pie>
+                        <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: '#fff' }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="mt-4 flex justify-center gap-4">
+                    {stat.data.map((d, i) => (
+                      <div key={i} className="flex items-center gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: i === 0 ? '#10b981' : '#ef4444' }}></div>
+                        <span className="text-[10px] font-bold text-gray-500 uppercase">{d.name} ({d.value})</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {selectedFormType !== 'all' && topValues && isChartEnabled(chartConfig, 'topValues') && (
+          <div className="pt-10 border-t border-gray-100 dark:border-gray-700 animate-in fade-in duration-500 space-y-4">
+            <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+              <TrendingUp size={18} className="text-primary" /> Top {topValues.fieldName}
+            </h3>
+            <div className="h-[340px] bg-gray-50 dark:bg-gray-900/20 p-4 rounded-2xl border border-gray-100 dark:border-gray-800">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart layout="vertical" data={topValues.data}>
+                  <XAxis type="number" stroke="#9ca3af" fontSize={11} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <YAxis type="category" dataKey="name" stroke="#9ca3af" fontSize={11} axisLine={false} tickLine={false} width={130} />
+                  <Tooltip cursor={{ fill: 'rgba(59,130,246,0.05)' }} contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: '#fff' }} />
+                  <Bar dataKey="count" fill="#3b82f6" radius={[0, 8, 8, 0]} barSize={18} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+
+        {selectedFormType !== 'all' && stackedTrend && stackedTrend.series.length > 0 && isChartEnabled(chartConfig, 'stacked') && (
+          <div className="pt-10 border-t border-gray-100 dark:border-gray-700 animate-in fade-in duration-500 space-y-4">
+            <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+              <Layers size={18} className="text-purple-500" /> {stackedTrend.fieldName} Over Time
+            </h3>
+            <div className="h-[340px] bg-gray-50 dark:bg-gray-900/20 p-4 rounded-2xl border border-gray-100 dark:border-gray-800">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={stackedTrend.data}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#374151" opacity={0.1} />
+                  <XAxis dataKey="month" stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
+                  <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: '#fff' }} />
+                  <Legend iconType="circle" />
+                  {stackedTrend.series.map((s, i) => (
+                    <Bar key={s} dataKey={s} name={s} stackId="a" fill={COLORS[i % COLORS.length]} />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+
+        {selectedFormType !== 'all' && scatterData && isChartEnabled(chartConfig, 'scatter') && (
+          <div className="pt-10 border-t border-gray-100 dark:border-gray-700 animate-in fade-in duration-500 space-y-4">
+            <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+              <Activity size={18} className="text-pink-500" /> {scatterData.xName} vs {scatterData.yName}
+            </h3>
+            <div className="h-[340px] bg-gray-50 dark:bg-gray-900/20 p-4 rounded-2xl border border-gray-100 dark:border-gray-800">
+              <ResponsiveContainer width="100%" height="100%">
+                <ScatterChart>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.1} />
+                  <XAxis type="number" dataKey="x" name={scatterData.xName} stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} />
+                  <YAxis type="number" dataKey="y" name={scatterData.yName} stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} />
+                  <ZAxis range={[40, 40]} />
+                  <Tooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: '#fff' }} />
+                  <Scatter data={scatterData.data} fill="#ec4899" fillOpacity={0.5} />
+                </ScatterChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+
+        {selectedFormType !== 'all' && weekdayStats && isChartEnabled(chartConfig, 'weekday') && (
+          <div className="pt-10 border-t border-gray-100 dark:border-gray-700 animate-in fade-in duration-500 space-y-4">
+            <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+              <CalendarClock size={18} className="text-primary" /> Weekday Activity
+            </h3>
+            <div className="h-[280px] bg-gray-50 dark:bg-gray-900/20 p-4 rounded-2xl border border-gray-100 dark:border-gray-800">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={weekdayStats}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#374151" opacity={0.1} />
+                  <XAxis dataKey="name" stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
+                  <Tooltip cursor={{ fill: 'rgba(59,130,246,0.05)' }} contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: '#fff' }} />
+                  <Bar dataKey="count" name="Records" fill="#8b5cf6" radius={[6, 6, 0, 0]} />
+                </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
